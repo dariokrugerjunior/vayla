@@ -131,6 +131,15 @@ export async function fetchStoreBannerSettings(storeId = STORE_ID): Promise<Stor
   return mapBannerSettings(data);
 }
 
+export async function trackVisit(payload: {
+  store_id: number;
+  path: string;
+  session_id: string;
+  referrer?: string;
+}) {
+  return apiPost('/tracking/visit', payload);
+}
+
 export async function fetchProducts(storeId = STORE_ID): Promise<Product[]> {
   const data = await apiGet<ApiProduct[]>(`/stores/id/${storeId}/products`);
   return data.map((p) => mapProduct(p, []));

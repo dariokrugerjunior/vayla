@@ -231,6 +231,20 @@ CREATE TABLE IF NOT EXISTS store_banners (
 
 CREATE INDEX IF NOT EXISTS idx_store_banners_store_id ON store_banners(store_id);
 
+CREATE TABLE IF NOT EXISTS store_visits (
+	id BIGSERIAL PRIMARY KEY,
+	store_id BIGINT NOT NULL REFERENCES stores(id) ON DELETE RESTRICT,
+	path TEXT NOT NULL,
+	session_id TEXT NOT NULL,
+	referrer TEXT,
+	user_agent TEXT,
+	visited_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_store_visits_store_id ON store_visits(store_id);
+CREATE INDEX IF NOT EXISTS idx_store_visits_session_id ON store_visits(session_id);
+CREATE INDEX IF NOT EXISTS idx_store_visits_visited_at ON store_visits(visited_at);
+
 CREATE TABLE IF NOT EXISTS product_views (
 	id BIGSERIAL PRIMARY KEY,
 	store_id BIGINT NOT NULL REFERENCES stores(id) ON DELETE RESTRICT,

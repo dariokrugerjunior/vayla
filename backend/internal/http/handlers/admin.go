@@ -1115,7 +1115,7 @@ func (h *HandlerContainer) AdminDashboard(c *gin.Context) {
 		JSONError(c, 500, err)
 		return
 	}
-	if err := h.DB.QueryRowContext(c.Request.Context(), `SELECT COUNT(*) FROM product_views WHERE store_id = $1 AND viewed_at >= NOW() - INTERVAL '7 days'`, storeID).Scan(&totalViews); err != nil {
+	if err := h.DB.QueryRowContext(c.Request.Context(), `SELECT COUNT(DISTINCT session_id) FROM store_visits WHERE store_id = $1 AND visited_at >= NOW() - INTERVAL '7 days'`, storeID).Scan(&totalViews); err != nil {
 		JSONError(c, 500, err)
 		return
 	}
@@ -1227,7 +1227,7 @@ func (h *HandlerContainer) AdminAnalytics(c *gin.Context) {
 	}
 
 	var totalViews, totalSales int
-	if err := h.DB.QueryRowContext(c.Request.Context(), `SELECT COUNT(*) FROM product_views WHERE store_id = $1`, storeID).Scan(&totalViews); err != nil {
+	if err := h.DB.QueryRowContext(c.Request.Context(), `SELECT COUNT(DISTINCT session_id) FROM store_visits WHERE store_id = $1`, storeID).Scan(&totalViews); err != nil {
 		JSONError(c, 500, err)
 		return
 	}
@@ -1279,10 +1279,10 @@ func (h *HandlerContainer) getOrdersByDay(c *gin.Context, storeID int64) ([]DayM
 func (h *HandlerContainer) getTrafficByDay(c *gin.Context, storeID int64) ([]TrafficMetric, error) {
 	const query = `
 		SELECT to_char(day, 'DD/MM') AS label,
-			COALESCE(COUNT(DISTINCT pv.id), 0) AS visits,
+			COALESCE(COUNT(DISTINCT sv.session_id), 0) AS visits,
 			COALESCE(COUNT(DISTINCT o.id), 0) AS orders
 		FROM generate_series(current_date - interval '6 days', current_date, interval '1 day') day
-		LEFT JOIN product_views pv ON pv.store_id = $1 AND pv.viewed_at::date = day::date
+		LEFT JOIN store_visits sv ON sv.store_id = $1 AND sv.visited_at::date = day::date
 		LEFT JOIN orders o ON o.store_id = $1 AND o.created_at::date = day::date
 		GROUP BY day
 		ORDER BY day

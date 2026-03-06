@@ -16,6 +16,7 @@ func RegisterPublicRoutes(router *gin.Engine, h *handlers.HandlerContainer) {
 	router.GET("/stores/id/:storeID/products", h.ListProductsByID)
 	router.GET("/stores/id/:storeID/products/:productSlug", h.GetProductByIDStore)
 	router.GET("/stores/id/:storeID/banner-settings", h.GetStoreBannerSettingsByID)
+	router.POST("/tracking/visit", h.TrackVisit)
 	router.POST("/checkout/whatsapp", h.CheckoutWhatsApp)
 }
 

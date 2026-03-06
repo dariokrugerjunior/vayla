@@ -8,7 +8,7 @@ import { useStore } from '../contexts/StoreContext';
 import { WhatsAppButton } from '../components/storefront/WhatsAppButton';
 import { Sheet, SheetContent, SheetTrigger } from '../components/ui/sheet';
 import { Category } from '../types';
-import { fetchCategories } from '../services/storefront';
+import { fetchCategories, trackVisit } from '../services/storefront';
 import { StoreNotFound } from '../components/StoreNotFound';
 
 export function StorefrontLayout() {
@@ -24,6 +24,26 @@ export function StorefrontLayout() {
       .then(setCategories)
       .catch(() => setCategories([]));
   }, [storeID]);
+
+  useEffect(() => {
+    if (!storeID) return;
+    const key = 'vayla_session_id';
+    let sessionId = localStorage.getItem(key) || '';
+    if (!sessionId) {
+      sessionId =
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem(key, sessionId);
+    }
+
+    trackVisit({
+      store_id: storeID,
+      path: `${location.pathname}${location.search}`,
+      session_id: sessionId,
+      referrer: document.referrer || '',
+    }).catch(() => {});
+  }, [storeID, location.pathname, location.search]);
 
   const cartCount = items.reduce((total, item) => total + item.quantity, 0);
 
