@@ -1,11 +1,27 @@
+# Frontend - Vayla
 
-  # UI/UX Design for E-commerce App
+Frontend do SaaS multi-tenant de lojas de roupas. Projeto em React + Vite.
 
-  This is a code bundle for UI/UX Design for E-commerce App. The original project is available at https://www.figma.com/design/ctuOp1lFHd8g0csORrSjQc/UI-UX-Design-for-E-commerce-App.
+## Requisitos
+- Node.js 18+ (recomendado)
+- npm
 
-  ## Running the code
+## Como rodar
 
-  Run `npm i` to install the dependencies.
+```bash
+npm install
+npm run dev
+```
 
-  Run `npm run dev` to start the development server.
-  
+Acesse:
+- http://localhost:5173
+
+## Estrutura
+- `src/app/pages/storefront`: telas do catálogo
+- `src/app/pages/admin`: telas administrativas
+- `src/app/components`: componentes compartilhados
+
+## Observações
+- Este frontend usa dados mockados em `src/app/data/mockData.ts`.
+- Integração com API será adicionada no backend conforme evolução do projeto.
+
