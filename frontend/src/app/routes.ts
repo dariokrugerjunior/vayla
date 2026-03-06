@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router";
+﻿import { createBrowserRouter } from "react-router";
 import { StorefrontLayout } from "./layouts/StorefrontLayout";
 import { AdminLayout } from "./layouts/AdminLayout";
 import { StoreHome } from "./pages/storefront/StoreHome";
@@ -22,7 +22,7 @@ export const router = createBrowserRouter([
     Component: StorefrontLayout,
     children: [
       { index: true, Component: StoreHome },
-      { path: "product/:id", Component: ProductDetails },
+      { path: "product/:slug", Component: ProductDetails },
       { path: "cart", Component: Cart },
       { path: "checkout", Component: WhatsAppCheckout },
     ],

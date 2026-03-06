@@ -1,3 +1,4 @@
+﻿import { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router';
 import { Search, ShoppingCart, Menu } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -6,14 +7,27 @@ import { useCart } from '../contexts/CartContext';
 import { useStore } from '../contexts/StoreContext';
 import { WhatsAppButton } from '../components/storefront/WhatsAppButton';
 import { Sheet, SheetContent, SheetTrigger } from '../components/ui/sheet';
-import { mockCategories } from '../data/mockData';
+import { Category } from '../types';
+import { fetchCategories } from '../services/storefront';
 
 export function StorefrontLayout() {
   const { items } = useCart();
-  const { store } = useStore();
+  const { store, storeSlug, isLoading } = useStore();
   const location = useLocation();
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    if (!storeSlug) return;
+    fetchCategories(storeSlug)
+      .then(setCategories)
+      .catch(() => setCategories([]));
+  }, [storeSlug]);
 
   const cartCount = items.reduce((total, item) => total + item.quantity, 0);
+
+  if (isLoading || !store) {
+    return <div className="p-6">Carregando loja...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -24,7 +38,7 @@ export function StorefrontLayout() {
             {/* Logo */}
             <Link to="/" className="flex items-center gap-3">
               <img
-                src={store.logo}
+                src={store.logoUrl || 'https://placehold.co/64x64?text=Logo'}
                 alt={store.name}
                 className="w-10 h-10 rounded-full object-cover"
               />
@@ -76,7 +90,7 @@ export function StorefrontLayout() {
                     <div>
                       <h3 className="font-semibold mb-3">Categorias</h3>
                       <div className="flex flex-col gap-2">
-                        {mockCategories.map((category) => (
+                        {categories.map((category) => (
                           <Link
                             key={category.id}
                             to={`/?category=${category.slug}`}
@@ -98,7 +112,7 @@ export function StorefrontLayout() {
         <div className="hidden md:block border-t border-neutral-200">
           <div className="container mx-auto px-4">
             <div className="flex gap-6 py-3 overflow-x-auto">
-              {mockCategories.map((category) => (
+              {categories.map((category) => (
                 <Link
                   key={category.id}
                   to={`/?category=${category.slug}`}
@@ -124,7 +138,7 @@ export function StorefrontLayout() {
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <img
-                  src={store.logo}
+                  src={store.logoUrl || 'https://placehold.co/64x64?text=Logo'}
                   alt={store.name}
                   className="w-10 h-10 rounded-full object-cover"
                 />
@@ -137,7 +151,7 @@ export function StorefrontLayout() {
             <div>
               <h3 className="font-semibold mb-4">Categorias</h3>
               <div className="flex flex-col gap-2">
-                {mockCategories.slice(0, 4).map((category) => (
+                {categories.slice(0, 4).map((category) => (
                   <Link
                     key={category.id}
                     to={`/?category=${category.slug}`}

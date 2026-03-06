@@ -1,28 +1,48 @@
+﻿import { useEffect, useState } from 'react';
 import { TrendingUp, ShoppingBag, Package, Eye } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { mockProducts, mockOrders } from '../../data/mockData';
+import { useStore } from '../../contexts/StoreContext';
+import { fetchAdminDashboard } from '../../services/storefront';
+import { Product } from '../../types';
 
-const ordersData = [
-  { day: 'Seg', orders: 12 },
-  { day: 'Ter', orders: 19 },
-  { day: 'Qua', orders: 15 },
-  { day: 'Qui', orders: 25 },
-  { day: 'Sex', orders: 22 },
-  { day: 'Sáb', orders: 30 },
-  { day: 'Dom', orders: 18 },
-];
+interface DashboardData {
+  total_products: number;
+  total_orders: number;
+  total_views: number;
+  conversion_rate: number;
+  orders_by_day: { label: string; orders: number }[];
+  top_sold_products: Product[];
+  top_viewed_products: Product[];
+}
 
 export function Dashboard() {
-  const totalProducts = mockProducts.length;
-  const totalOrders = mockOrders.length;
-  const topProducts = [...mockProducts]
-    .sort((a, b) => (b.sales || 0) - (a.sales || 0))
-    .slice(0, 5);
+  const { store } = useStore();
+  const [data, setData] = useState<DashboardData | null>(null);
 
-  const topViewedProducts = [...mockProducts]
-    .sort((a, b) => (b.views || 0) - (a.views || 0))
-    .slice(0, 5);
+  useEffect(() => {
+    if (!store) return;
+    fetchAdminDashboard(store.id)
+      .then((d: any) => {
+        setData({
+          total_products: d.total_products,
+          total_orders: d.total_orders,
+          total_views: d.total_views,
+          conversion_rate: d.conversion_rate,
+          orders_by_day: d.orders_by_day || [],
+          top_sold_products: d.top_sold_products || [],
+          top_viewed_products: d.top_viewed_products || [],
+        });
+      })
+      .catch(() => setData(null));
+  }, [store]);
+
+  if (!store || !data) {
+    return <div className="p-6">Carregando...</div>;
+  }
+
+  const totalProducts = data.total_products;
+  const totalOrders = data.total_orders;
 
   return (
     <div className="space-y-6">
@@ -55,7 +75,7 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalOrders}</div>
-            <p className="text-xs text-green-600 mt-1">+12% vs mês anterior</p>
+            <p className="text-xs text-green-600 mt-1">dados atualizados</p>
           </CardContent>
         </Card>
 
@@ -68,9 +88,9 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {mockProducts.reduce((sum, p) => sum + (p.views || 0), 0)}
+              {data.total_views}
             </div>
-            <p className="text-xs text-neutral-500 mt-1">esta semana</p>
+            <p className="text-xs text-neutral-500 mt-1">últimos 7 dias</p>
           </CardContent>
         </Card>
 
@@ -82,8 +102,8 @@ export function Dashboard() {
             <TrendingUp className="h-4 w-4 text-neutral-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">8.2%</div>
-            <p className="text-xs text-green-600 mt-1">+2.4% vs mês anterior</p>
+            <div className="text-2xl font-bold">{data.conversion_rate.toFixed(1)}%</div>
+            <p className="text-xs text-green-600 mt-1">últimos 7 dias</p>
           </CardContent>
         </Card>
       </div>
@@ -97,9 +117,9 @@ export function Dashboard() {
           <CardContent>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={ordersData}>
+                <LineChart data={data.orders_by_day}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="day" />
+                  <XAxis dataKey="label" />
                   <YAxis />
                   <Tooltip />
                   <Line
@@ -123,7 +143,7 @@ export function Dashboard() {
           <CardContent>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topProducts}>
+                <BarChart data={data.top_sold_products}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
                   <YAxis />
@@ -144,13 +164,13 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {topProducts.map((product, index) => (
+              {data.top_sold_products.map((product, index) => (
                 <div key={product.id} className="flex items-center gap-4">
                   <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-semibold text-sm">
                     {index + 1}
                   </div>
                   <img
-                    src={product.images[0]}
+                    src={product.images[0] || 'https://placehold.co/600x600?text=Produto'}
                     alt={product.name}
                     className="w-12 h-12 rounded-lg object-cover"
                   />
@@ -171,13 +191,13 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {topViewedProducts.map((product, index) => (
+              {data.top_viewed_products.map((product, index) => (
                 <div key={product.id} className="flex items-center gap-4">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-sm">
                     {index + 1}
                   </div>
                   <img
-                    src={product.images[0]}
+                    src={product.images[0] || 'https://placehold.co/600x600?text=Produto'}
                     alt={product.name}
                     className="w-12 h-12 rounded-lg object-cover"
                   />

@@ -1,12 +1,12 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+﻿import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { CartItem, Product, ProductVariation } from '../types';
 import { toast } from 'sonner';
 
 interface CartContextType {
   items: CartItem[];
   addToCart: (product: Product, variation: ProductVariation, quantity: number) => void;
-  removeFromCart: (productId: string, variationId: string) => void;
-  updateQuantity: (productId: string, variationId: string, quantity: number) => void;
+  removeFromCart: (productId: number, variationId: number) => void;
+  updateQuantity: (productId: number, variationId: number, quantity: number) => void;
   clearCart: () => void;
   getTotal: () => number;
 }
@@ -36,7 +36,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const removeFromCart = (productId: string, variationId: string) => {
+  const removeFromCart = (productId: number, variationId: number) => {
     setItems((prev) =>
       prev.filter(
         (item) => !(item.product.id === productId && item.variation.id === variationId)
@@ -45,7 +45,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     toast.success('Produto removido do carrinho');
   };
 
-  const updateQuantity = (productId: string, variationId: string, quantity: number) => {
+  const updateQuantity = (productId: number, variationId: number, quantity: number) => {
     if (quantity <= 0) {
       removeFromCart(productId, variationId);
       return;
@@ -66,7 +66,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const getTotal = () => {
     return items.reduce((total, item) => {
-      const price = item.product.discountPrice || item.product.price;
+      const override = item.variation.priceOverride || 0;
+      const price = override > 0 ? override : item.product.discountPrice || item.product.price;
       return total + price * item.quantity;
     }, 0);
   };

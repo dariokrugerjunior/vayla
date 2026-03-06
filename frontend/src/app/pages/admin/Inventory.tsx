@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { AlertTriangle, Package } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -12,15 +12,27 @@ import {
   TableRow,
 } from '../../components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { mockProducts } from '../../data/mockData';
+import { useStore } from '../../contexts/StoreContext';
+import { fetchAdminInventory } from '../../services/storefront';
+import { Product, ProductVariation } from '../../types';
+
+interface InventoryItem {
+  product: Product;
+  variation: ProductVariation;
+}
 
 export function Inventory() {
-  const allVariations = mockProducts.flatMap((product) =>
-    product.variations.map((variation) => ({
-      product,
-      variation,
-    }))
-  );
+  const { store } = useStore();
+  const [allVariations, setAllVariations] = useState<InventoryItem[]>([]);
+
+  useEffect(() => {
+    if (!store) return;
+    fetchAdminInventory(store.id).then(setAllVariations).catch(() => setAllVariations([]));
+  }, [store]);
+
+  if (!store) {
+    return <div className="p-6">Carregando...</div>;
+  }
 
   const lowStock = allVariations.filter((item) => item.variation.stock <= 5);
   const outOfStock = allVariations.filter((item) => item.variation.stock === 0);
@@ -97,13 +109,13 @@ export function Inventory() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <img
-                        src={item.product.images[0]}
+                        src={item.product.images[0] || 'https://placehold.co/600x600?text=Produto'}
                         alt={item.product.name}
                         className="w-12 h-12 rounded-lg object-cover"
                       />
                       <div>
                         <p className="font-medium">{item.product.name}</p>
-                        <p className="text-sm text-neutral-500">{item.product.category}</p>
+                        <p className="text-sm text-neutral-500">{item.product.categoryName}</p>
                       </div>
                     </div>
                   </TableCell>

@@ -1,4 +1,4 @@
-import { MessageCircle } from 'lucide-react';
+﻿import { MessageCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useStore } from '../../contexts/StoreContext';
 
@@ -6,10 +6,13 @@ export function WhatsAppButton() {
   const { store } = useStore();
 
   const handleClick = () => {
+    if (!store) return;
     const message = 'Olá! Gostaria de mais informações sobre os produtos.';
     const whatsappUrl = `https://wa.me/${store.whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
+
+  if (!store) return null;
 
   return (
     <motion.button

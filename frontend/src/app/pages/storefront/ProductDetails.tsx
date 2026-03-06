@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router';
 import { motion } from 'motion/react';
 import { ChevronLeft, Minus, Plus, Check, ShoppingCart } from 'lucide-react';
@@ -7,21 +7,38 @@ import { Badge } from '../../components/ui/badge';
 import { ProductCard } from '../../components/storefront/ProductCard';
 import { useCart } from '../../contexts/CartContext';
 import { useStore } from '../../contexts/StoreContext';
-import { mockProducts } from '../../data/mockData';
-import { ProductVariation } from '../../types';
+import { Product } from '../../types';
+import { checkoutWhatsApp, fetchProduct, fetchProducts } from '../../services/storefront';
+import { toast } from 'sonner';
 
 export function ProductDetails() {
-  const { id } = useParams();
+  const { slug } = useParams();
   const { addToCart } = useCart();
-  const { store } = useStore();
-  const product = mockProducts.find((p) => p.id === id);
-
+  const { store, storeSlug } = useStore();
+  const [product, setProduct] = useState<Product | null>(null);
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
   const [quantity, setQuantity] = useState(1);
 
-  if (!product) {
+  useEffect(() => {
+    if (!slug || !storeSlug) return;
+    fetchProduct(storeSlug, slug)
+      .then(async (p) => {
+        setProduct(p);
+        try {
+          const list = await fetchProducts(storeSlug);
+          const related = list.filter((item) => item.categoryId === p.categoryId && item.id !== p.id);
+          setRelatedProducts(related.slice(0, 4));
+        } catch {
+          setRelatedProducts([]);
+        }
+      })
+      .catch(() => setProduct(null));
+  }, [slug, storeSlug]);
+
+  if (!product || !store) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <h2 className="text-2xl font-bold mb-4">Produto não encontrado</h2>
@@ -46,24 +63,27 @@ export function ProductDetails() {
     addToCart(product, selectedVariation, quantity);
   };
 
-  const handleBuyWhatsApp = () => {
+  const handleBuyWhatsApp = async () => {
     if (!selectedVariation) return;
-
-    const price = product.discountPrice || product.price;
-    const total = price * quantity;
-
-    const message = `Olá! Gostaria de comprar:\n\n*${product.name}*\nCor: ${selectedColor}\nTamanho: ${selectedSize}\nQuantidade: ${quantity}\nPreço: R$ ${total.toFixed(2)}`;
-    
-    const whatsappUrl = `https://wa.me/${store.whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
+    try {
+      const result = await checkoutWhatsApp({
+        store_slug: storeSlug,
+        items: [
+          {
+            product_id: product.id,
+            variant_id: selectedVariation.id,
+            quantity,
+          },
+        ],
+      });
+      window.open(result.whatsapp_url, '_blank');
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
   };
 
-  const relatedProducts = mockProducts
-    .filter((p) => p.category === product.category && p.id !== product.id)
-    .slice(0, 4);
-
   const price = product.discountPrice || product.price;
-  const hasDiscount = !!product.discountPrice;
+  const hasDiscount = product.discountPrice > 0;
 
   return (
     <div>
@@ -87,7 +107,7 @@ export function ProductDetails() {
               className="aspect-square rounded-2xl overflow-hidden bg-neutral-100"
             >
               <img
-                src={product.images[selectedImage]}
+                src={product.images[selectedImage] || 'https://placehold.co/600x600?text=Produto'}
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
@@ -112,7 +132,7 @@ export function ProductDetails() {
           <div className="space-y-6">
             <div>
               <Badge variant="secondary" className="mb-3">
-                {product.category}
+                {product.categoryName || 'Categoria'}
               </Badge>
               <h1 className="text-3xl md:text-4xl font-bold mb-3">{product.name}</h1>
               <div className="flex items-baseline gap-3">
@@ -247,8 +267,8 @@ export function ProductDetails() {
           <section className="mt-16">
             <h2 className="text-2xl font-bold mb-6">Produtos Relacionados</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-              {relatedProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
+              {relatedProducts.map((productItem) => (
+                <ProductCard key={productItem.id} product={productItem} />
               ))}
             </div>
           </section>

@@ -14,7 +14,7 @@ func (h *HandlerContainer) ListCategories(c *gin.Context) {
 		return
 	}
 
-	items, err := h.CategoryRepo.ListByStoreID(c.Request.Context(), store.ID)
+	items, err := h.CategoryRepo.ListWithProductCount(c.Request.Context(), store.ID)
 	if err != nil {
 		api.JSONError(c, 500, err)
 		return

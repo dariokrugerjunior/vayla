@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { MessageCircle, Copy, Check } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -7,15 +7,39 @@ import { Textarea } from '../../components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { useStore } from '../../contexts/StoreContext';
 import { toast } from 'sonner';
+import { fetchWhatsAppSettings, updateWhatsAppSettings } from '../../services/storefront';
 
 export function WhatsAppSettings() {
-  const { store, updateStore } = useStore();
-  const [whatsappNumber, setWhatsappNumber] = useState(store.whatsappNumber);
-  const [messageTemplate, setMessageTemplate] = useState(store.whatsappMessageTemplate);
+  const { store } = useStore();
+  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [messageTemplate, setMessageTemplate] = useState('');
   const [copied, setCopied] = useState(false);
 
-  const handleSave = () => {
-    updateStore({ whatsappNumber, whatsappMessageTemplate: messageTemplate });
+  useEffect(() => {
+    if (!store) return;
+    fetchWhatsAppSettings(store.id)
+      .then((data: any) => {
+        setWhatsappNumber(data.whatsapp_number || store.whatsappNumber);
+        setMessageTemplate(data.default_message_template || 'Olá! Quero fazer este pedido:');
+      })
+      .catch(() => {
+        setWhatsappNumber(store.whatsappNumber);
+        setMessageTemplate('Olá! Quero fazer este pedido:');
+      });
+  }, [store]);
+
+  if (!store) {
+    return <div className="p-6">Carregando...</div>;
+  }
+
+  const handleSave = async () => {
+    await updateWhatsAppSettings(store.id, {
+      whatsapp_number: whatsappNumber,
+      default_message_template: messageTemplate,
+      cart_message_template: messageTemplate,
+      single_product_message_template: messageTemplate,
+      is_active: true,
+    });
     toast.success('Configurações do WhatsApp salvas!');
   };
 

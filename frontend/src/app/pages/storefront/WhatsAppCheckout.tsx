@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { CheckCircle2, MessageCircle } from 'lucide-react';
 import { Button } from '../../components/ui/button';
@@ -8,10 +8,11 @@ import { useCart } from '../../contexts/CartContext';
 import { useStore } from '../../contexts/StoreContext';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
+import { checkoutWhatsApp } from '../../services/storefront';
 
 export function WhatsAppCheckout() {
   const { items, getTotal, clearCart } = useCart();
-  const { store } = useStore();
+  const { store, storeSlug } = useStore();
   const navigate = useNavigate();
 
   const [customerName, setCustomerName] = useState('');
@@ -25,31 +26,11 @@ export function WhatsAppCheckout() {
     }
   }, [items.length, navigate]);
 
-  if (items.length === 0) {
+  if (items.length === 0 || !store) {
     return null;
   }
 
-  const generateWhatsAppMessage = () => {
-    let message = `*Novo Pedido - ${store.name}*\n\n`;
-    message += `*Cliente:* ${customerName}\n`;
-    message += `*Telefone:* ${customerPhone}\n\n`;
-    message += `*Produtos:*\n`;
-
-    items.forEach((item, index) => {
-      const price = item.product.discountPrice || item.product.price;
-      message += `\n${index + 1}. *${item.product.name}*\n`;
-      message += `   Cor: ${item.variation.color}\n`;
-      message += `   Tamanho: ${item.variation.size}\n`;
-      message += `   Quantidade: ${item.quantity}\n`;
-      message += `   Preço: R$ ${(price * item.quantity).toFixed(2)}\n`;
-    });
-
-    message += `\n*Total: R$ ${total.toFixed(2)}*`;
-
-    return message;
-  };
-
-  const handleSendToWhatsApp = () => {
+  const handleSendToWhatsApp = async () => {
     if (!customerName.trim()) {
       toast.error('Por favor, preencha seu nome');
       return;
@@ -59,16 +40,26 @@ export function WhatsAppCheckout() {
       return;
     }
 
-    const message = generateWhatsAppMessage();
-    const whatsappUrl = `https://wa.me/${store.whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
-    
-    window.open(whatsappUrl, '_blank');
-    
-    setTimeout(() => {
-      clearCart();
-      navigate('/');
-      toast.success('Pedido enviado! Em breve entraremos em contato.');
-    }, 1000);
+    try {
+      const result = await checkoutWhatsApp({
+        store_slug: storeSlug,
+        items: items.map((item) => ({
+          product_id: item.product.id,
+          variant_id: item.variation.id,
+          quantity: item.quantity,
+        })),
+      });
+
+      window.open(result.whatsapp_url, '_blank');
+
+      setTimeout(() => {
+        clearCart();
+        navigate('/');
+        toast.success('Pedido enviado! Em breve entraremos em contato.');
+      }, 1000);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
   };
 
   return (
@@ -123,14 +114,15 @@ export function WhatsAppCheckout() {
               <h2 className="text-xl font-bold mb-4">Resumo do Pedido</h2>
               <div className="space-y-4">
                 {items.map((item) => {
-                  const price = item.product.discountPrice || item.product.price;
+                  const override = item.variation.priceOverride || 0;
+                  const price = override > 0 ? override : item.product.discountPrice || item.product.price;
                   return (
                     <div
                       key={`${item.product.id}-${item.variation.id}`}
                       className="flex gap-4"
                     >
                       <img
-                        src={item.product.images[0]}
+                        src={item.product.images[0] || 'https://placehold.co/600x600?text=Produto'}
                         alt={item.product.name}
                         className="w-20 h-20 rounded-lg object-cover"
                       />

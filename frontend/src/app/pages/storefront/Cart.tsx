@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router';
+﻿import { Link, useNavigate } from 'react-router';
 import { Trash2, Minus, Plus, ShoppingBag } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { useCart } from '../../contexts/CartContext';
@@ -39,7 +39,9 @@ export function Cart() {
         {/* Cart Items */}
         <div className="lg:col-span-2 space-y-4">
           {items.map((item, index) => {
-            const price = item.product.discountPrice || item.product.price;
+            const override = item.variation.priceOverride || 0;
+            const price = override > 0 ? override : item.product.discountPrice || item.product.price;
+            const image = item.product.images[0] || 'https://placehold.co/600x600?text=Produto';
             return (
               <motion.div
                 key={`${item.product.id}-${item.variation.id}`}
@@ -50,7 +52,7 @@ export function Cart() {
               >
                 <div className="flex gap-4">
                   <img
-                    src={item.product.images[0]}
+                    src={image}
                     alt={item.product.name}
                     className="w-24 h-24 md:w-32 md:h-32 rounded-lg object-cover"
                   />

@@ -17,6 +17,18 @@ func RegisterPublicRoutes(router *gin.Engine, h *handlers.HandlerContainer) {
 func RegisterAdminRoutes(router *gin.Engine, h *handlers.HandlerContainer) {
 	admin := router.Group("/admin")
 	admin.GET("/products", h.AdminListProducts)
+	admin.GET("/products/:id", h.AdminGetProduct)
 	admin.POST("/products", h.AdminCreateProduct)
+	admin.PUT("/products/:id", h.AdminUpdateProduct)
+	admin.GET("/categories", h.AdminListCategories)
+	admin.GET("/orders", h.AdminListOrders)
+	admin.GET("/customers", h.AdminListCustomers)
+	admin.GET("/inventory", h.AdminListInventory)
+	admin.GET("/dashboard", h.AdminDashboard)
+	admin.GET("/analytics", h.AdminAnalytics)
+	admin.GET("/store", h.AdminGetStore)
+	admin.PUT("/store", h.AdminUpdateStore)
+	admin.GET("/whatsapp-settings", h.AdminGetWhatsAppSettings)
+	admin.PUT("/whatsapp-settings", h.AdminUpdateWhatsAppSettings)
 }
 

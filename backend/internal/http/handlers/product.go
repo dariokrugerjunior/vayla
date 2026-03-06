@@ -1,12 +1,27 @@
 package handlers
 
 import (
-	"strconv"
+	"time"
 
 	api "multi-tennet/internal/http"
 
 	"github.com/gin-gonic/gin"
 )
+
+type PublicProductResponse struct {
+	ID            int64    `json:"id"`
+	Slug          string   `json:"slug"`
+	Name          string   `json:"name"`
+	Description   string   `json:"description"`
+	ShortDescription string `json:"short_description"`
+	Price         float64  `json:"price"`
+	DiscountPrice float64  `json:"discount_price"`
+	CategoryID    int64    `json:"category_id"`
+	Images        []string `json:"images"`
+	IsFeatured    bool     `json:"is_featured"`
+	IsActive      bool     `json:"is_active"`
+	CreatedAt     string   `json:"created_at"`
+}
 
 func (h *HandlerContainer) ListProducts(c *gin.Context) {
 	slug := c.Param("slug")
@@ -16,13 +31,35 @@ func (h *HandlerContainer) ListProducts(c *gin.Context) {
 		return
 	}
 
-	items, err := h.ProductRepo.ListByStoreID(c.Request.Context(), store.ID)
+	items, err := h.ProductRepo.ListByStoreIDWithCover(c.Request.Context(), store.ID)
 	if err != nil {
 		api.JSONError(c, 500, err)
 		return
 	}
 
-	api.JSONOK(c, items)
+	resp := make([]PublicProductResponse, 0, len(items))
+	for _, p := range items {
+		images := []string{}
+		if p.CoverImageURL != "" {
+			images = append(images, p.CoverImageURL)
+		}
+		resp = append(resp, PublicProductResponse{
+			ID:            p.ID,
+			Slug:          p.Slug,
+			Name:          p.Name,
+			Description:   p.Description,
+			ShortDescription: p.ShortDescription,
+			Price:         p.Price,
+			DiscountPrice: p.DiscountPrice,
+			CategoryID:    p.CategoryID,
+			Images:        images,
+			IsFeatured:    p.IsFeatured,
+			IsActive:      p.IsActive,
+			CreatedAt:     p.CreatedAt.Format(time.RFC3339),
+		})
+	}
+
+	api.JSONOK(c, resp)
 }
 
 func (h *HandlerContainer) GetProduct(c *gin.Context) {
@@ -47,30 +84,24 @@ func (h *HandlerContainer) GetProduct(c *gin.Context) {
 		return
 	}
 
-	api.JSONOK(c, gin.H{
-		"product":  item,
-		"variants": variants,
-	})
-}
-
-func (h *HandlerContainer) AdminListProducts(c *gin.Context) {
-	storeIDStr := c.Query("store_id")
-	if storeIDStr == "" {
-		api.JSONError(c, 400, errMissing("store_id"))
-		return
-	}
-	storeID, err := strconv.ParseInt(storeIDStr, 10, 64)
-	if err != nil {
-		api.JSONError(c, 400, errInvalid("store_id"))
-		return
-	}
-
-	items, err := h.ProductRepo.ListByStoreID(c.Request.Context(), storeID)
+	images, err := h.ProductRepo.ListImagesByProductID(c.Request.Context(), item.ID)
 	if err != nil {
 		api.JSONError(c, 500, err)
 		return
 	}
 
-	api.JSONOK(c, items)
-}
+	var category struct {
+		ID   int64  `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+	}
+	_ = h.DB.QueryRowContext(c.Request.Context(), `SELECT id, name, slug FROM categories WHERE id = $1`, item.CategoryID).
+		Scan(&category.ID, &category.Name, &category.Slug)
 
+	api.JSONOK(c, gin.H{
+		"product":  item,
+		"variants": variants,
+		"images":   images,
+		"category": category,
+	})
+}

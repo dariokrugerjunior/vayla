@@ -1,4 +1,4 @@
-import { Link } from 'react-router';
+﻿import { Link } from 'react-router';
 import { Badge } from '../ui/badge';
 import { Product } from '../../types';
 
@@ -8,14 +8,16 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
   const price = product.discountPrice || product.price;
-  const hasDiscount = !!product.discountPrice;
+  const hasDiscount = product.discountPrice > 0;
+  const image = product.images[0] || 'https://placehold.co/600x600?text=Produto';
+  const slug = product.slug || String(product.id);
 
   return (
-    <Link to={`/product/${product.id}`}>
+    <Link to={`/product/${slug}`}>
       <div className="group cursor-pointer">
         <div className="aspect-square bg-neutral-100 rounded-xl overflow-hidden mb-3 relative">
           <img
-            src={product.images[0]}
+            src={image}
             alt={product.name}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           />

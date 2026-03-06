@@ -1,3 +1,4 @@
+﻿import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Plus, Edit, MoreVertical, Eye } from 'lucide-react';
 import { Button } from '../../components/ui/button';
@@ -16,9 +17,23 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu';
-import { mockProducts } from '../../data/mockData';
+import { useStore } from '../../contexts/StoreContext';
+import { Product } from '../../types';
+import { fetchAdminProducts } from '../../services/storefront';
 
 export function Products() {
+  const { store } = useStore();
+  const [products, setProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    if (!store) return;
+    fetchAdminProducts(store.id).then(setProducts).catch(() => setProducts([]));
+  }, [store]);
+
+  if (!store) {
+    return <div className="p-6">Carregando...</div>;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -48,14 +63,14 @@ export function Products() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockProducts.map((product) => {
-              const totalStock = product.variations.reduce((sum, v) => sum + v.stock, 0);
+            {products.map((product) => {
+              const totalStock = product.totalStock || 0;
               return (
                 <TableRow key={product.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <img
-                        src={product.images[0]}
+                        src={product.images[0] || 'https://placehold.co/600x600?text=Produto'}
                         alt={product.name}
                         className="w-12 h-12 rounded-lg object-cover"
                       />
@@ -65,11 +80,11 @@ export function Products() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>{product.category}</TableCell>
+                  <TableCell>{product.categoryName || '-'}</TableCell>
                   <TableCell>
                     <div>
                       <p className="font-medium">R$ {product.price.toFixed(2)}</p>
-                      {product.discountPrice && (
+                      {product.discountPrice > 0 && (
                         <p className="text-sm text-green-600">
                           Desconto: R$ {product.discountPrice.toFixed(2)}
                         </p>
@@ -108,7 +123,7 @@ export function Products() {
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
-                          <Link to={`/product/${product.id}`}>
+                          <Link to={`/product/${product.slug || product.id}`}>
                             <Eye className="h-4 w-4 mr-2" />
                             Ver na Loja
                           </Link>

@@ -1,30 +1,48 @@
+﻿import { useEffect, useState } from 'react';
 import { TrendingUp, TrendingDown, Eye, ShoppingBag } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { mockProducts } from '../../data/mockData';
-
-const dailyTrafficData = [
-  { date: '01/03', visits: 245, orders: 12 },
-  { date: '02/03', visits: 312, orders: 19 },
-  { date: '03/03', visits: 289, orders: 15 },
-  { date: '04/03', visits: 398, orders: 25 },
-  { date: '05/03', visits: 356, orders: 22 },
-  { date: '06/03', visits: 445, orders: 30 },
-];
-
-const categoryData = [
-  { name: 'Camisetas', value: 35 },
-  { name: 'Calças', value: 25 },
-  { name: 'Vestidos', value: 20 },
-  { name: 'Jaquetas', value: 12 },
-  { name: 'Acessórios', value: 8 },
-];
+import { useStore } from '../../contexts/StoreContext';
+import { fetchAdminAnalytics } from '../../services/storefront';
+import { Product } from '../../types';
 
 const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
 
+interface AnalyticsData {
+  daily_traffic: { label: string; visits: number; orders: number }[];
+  category_distribution: { name: string; value: number }[];
+  product_performance: Product[];
+  total_views: number;
+  total_sales: number;
+  average_ticket: number;
+}
+
 export function Analytics() {
-  const totalViews = mockProducts.reduce((sum, p) => sum + (p.views || 0), 0);
-  const totalSales = mockProducts.reduce((sum, p) => sum + (p.sales || 0), 0);
+  const { store } = useStore();
+  const [data, setData] = useState<AnalyticsData | null>(null);
+
+  useEffect(() => {
+    if (!store) return;
+    fetchAdminAnalytics(store.id)
+      .then((d: any) => {
+        setData({
+          daily_traffic: d.daily_traffic || [],
+          category_distribution: d.category_distribution || [],
+          product_performance: d.product_performance || [],
+          total_views: d.total_views || 0,
+          total_sales: d.total_sales || 0,
+          average_ticket: d.average_ticket || 0,
+        });
+      })
+      .catch(() => setData(null));
+  }, [store]);
+
+  if (!store || !data) {
+    return <div className="p-6">Carregando...</div>;
+  }
+
+  const totalViews = data.total_views;
+  const totalSales = data.total_sales;
 
   return (
     <div className="space-y-6">
@@ -46,7 +64,7 @@ export function Analytics() {
             <div className="text-2xl font-bold">{totalViews}</div>
             <div className="flex items-center gap-1 mt-1">
               <TrendingUp className="h-3 w-3 text-green-600" />
-              <p className="text-xs text-green-600">+15.3% vs mês anterior</p>
+              <p className="text-xs text-green-600">dados reais</p>
             </div>
           </CardContent>
         </Card>
@@ -60,11 +78,11 @@ export function Analytics() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {((totalSales / totalViews) * 100).toFixed(1)}%
+              {totalViews > 0 ? ((totalSales / totalViews) * 100).toFixed(1) : '0.0'}%
             </div>
             <div className="flex items-center gap-1 mt-1">
               <TrendingUp className="h-3 w-3 text-green-600" />
-              <p className="text-xs text-green-600">+2.4% vs mês anterior</p>
+              <p className="text-xs text-green-600">dados reais</p>
             </div>
           </CardContent>
         </Card>
@@ -75,10 +93,10 @@ export function Analytics() {
             <TrendingUp className="h-4 w-4 text-neutral-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">R$ 152,40</div>
+            <div className="text-2xl font-bold">R$ {data.average_ticket.toFixed(2)}</div>
             <div className="flex items-center gap-1 mt-1">
               <TrendingDown className="h-3 w-3 text-red-600" />
-              <p className="text-xs text-red-600">-3.2% vs mês anterior</p>
+              <p className="text-xs text-red-600">dados reais</p>
             </div>
           </CardContent>
         </Card>
@@ -91,10 +109,10 @@ export function Analytics() {
             <ShoppingBag className="h-4 w-4 text-neutral-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12.5%</div>
+            <div className="text-2xl font-bold">0.0%</div>
             <div className="flex items-center gap-1 mt-1">
               <TrendingDown className="h-3 w-3 text-green-600" />
-              <p className="text-xs text-green-600">-5.1% vs mês anterior</p>
+              <p className="text-xs text-green-600">a calcular</p>
             </div>
           </CardContent>
         </Card>
@@ -109,9 +127,9 @@ export function Analytics() {
           <CardContent>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={dailyTrafficData}>
+                <LineChart data={data.daily_traffic}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="date" />
+                  <XAxis dataKey="label" />
                   <YAxis />
                   <Tooltip />
                   <Legend />
@@ -144,7 +162,7 @@ export function Analytics() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={categoryData}
+                    data={data.category_distribution}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
@@ -153,7 +171,7 @@ export function Analytics() {
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {categoryData.map((entry, index) => (
+                    {data.category_distribution.map((entry, index) => (
                       <Cell key={`cell-${entry.name}-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -174,7 +192,7 @@ export function Analytics() {
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={mockProducts.slice(0, 6)}
+                data={data.product_performance}
                 layout="vertical"
                 margin={{ left: 100 }}
               >

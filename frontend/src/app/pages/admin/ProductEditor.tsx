@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { ChevronLeft, Plus, Trash2, Upload } from 'lucide-react';
 import { Button } from '../../components/ui/button';
@@ -14,51 +14,110 @@ import {
 } from '../../components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Switch } from '../../components/ui/switch';
-import { mockProducts, mockCategories } from '../../data/mockData';
 import { toast } from 'sonner';
+import { useStore } from '../../contexts/StoreContext';
+import { Category, ProductVariation } from '../../types';
+import { createAdminProduct, fetchAdminCategories, fetchAdminProduct, fetchProduct, updateAdminProduct } from '../../services/storefront';
 
 export function ProductEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEditing = !!id;
-  const existingProduct = isEditing ? mockProducts.find((p) => p.id === id) : null;
+  const { store, storeSlug } = useStore();
 
-  const [name, setName] = useState(existingProduct?.name || '');
-  const [description, setDescription] = useState(existingProduct?.description || '');
-  const [price, setPrice] = useState(existingProduct?.price.toString() || '');
-  const [discountPrice, setDiscountPrice] = useState(existingProduct?.discountPrice?.toString() || '');
-  const [category, setCategory] = useState(existingProduct?.category || '');
-  const [status, setStatus] = useState(existingProduct?.status === 'active');
-  const [variations, setVariations] = useState(
-    existingProduct?.variations || [{ id: '1', color: '', size: '', stock: 0 }]
-  );
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('');
+  const [discountPrice, setDiscountPrice] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [status, setStatus] = useState(true);
+  const [variations, setVariations] = useState<ProductVariation[]>([
+    { id: 1, color: '', size: '', stock: 0 },
+  ]);
+
+  useEffect(() => {
+    if (!store) return;
+    fetchAdminCategories(store.id).then(setCategories).catch(() => setCategories([]));
+  }, [store]);
+
+  useEffect(() => {
+    if (!store || !storeSlug || !id) return;
+    const productId = Number(id);
+    if (!productId) return;
+
+    fetchAdminProduct(store.id, productId)
+      .then(async (p) => {
+        setName(p.name);
+        setDescription(p.description);
+        setPrice(String(p.price));
+        setDiscountPrice(String(p.discountPrice || ''));
+        setCategoryId(String(p.categoryId));
+        setStatus(p.status === 'active');
+
+        const fullProduct = await fetchProduct(storeSlug, p.slug);
+        setVariations(fullProduct.variations.length ? fullProduct.variations : [{ id: 1, color: '', size: '', stock: 0 }]);
+      })
+      .catch(() => toast.error('Não foi possível carregar o produto'));
+  }, [store, storeSlug, id]);
+
+  if (!store) {
+    return <div className="p-6">Carregando...</div>;
+  }
 
   const handleAddVariation = () => {
-    setVariations([...variations, { id: Date.now().toString(), color: '', size: '', stock: 0 }]);
+    setVariations([...variations, { id: Date.now(), color: '', size: '', stock: 0 }]);
   };
 
-  const handleRemoveVariation = (id: string) => {
-    setVariations(variations.filter((v) => v.id !== id));
+  const handleRemoveVariation = (variationId: number) => {
+    setVariations(variations.filter((v) => v.id !== variationId));
   };
 
   const handleVariationChange = (
-    id: string,
+    variationId: number,
     field: 'color' | 'size' | 'stock',
     value: string | number
   ) => {
     setVariations(
-      variations.map((v) => (v.id === id ? { ...v, [field]: value } : v))
+      variations.map((v) => (v.id === variationId ? { ...v, [field]: value } : v))
     );
   };
 
-  const handleSave = () => {
-    if (!name || !price || !category) {
+  const handleSave = async () => {
+    if (!name || !price || !categoryId) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
 
-    toast.success(isEditing ? 'Produto atualizado com sucesso!' : 'Produto criado com sucesso!');
-    navigate('/admin/products');
+    const basePayload = {
+      category_id: Number(categoryId),
+      name,
+      description,
+      short_description: description,
+      price: Number(price),
+      discount_price: Number(discountPrice || 0),
+      is_featured: false,
+      is_active: status,
+      variants: variations.map((v) => ({
+        sku: v.sku,
+        color: v.color,
+        size: v.size,
+        stock: v.stock,
+      })),
+    };
+
+    try {
+      if (isEditing && id) {
+        await updateAdminProduct(store.id, Number(id), basePayload);
+        toast.success('Produto atualizado com sucesso!');
+      } else {
+        await createAdminProduct({ store_id: store.id, ...basePayload });
+        toast.success('Produto criado com sucesso!');
+      }
+      navigate('/admin/products');
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
   };
 
   return (
@@ -138,13 +197,13 @@ export function ProductEditor() {
 
             <div>
               <Label htmlFor="category">Categoria *</Label>
-              <Select value={category} onValueChange={setCategory}>
+              <Select value={categoryId} onValueChange={setCategoryId}>
                 <SelectTrigger className="mt-1.5">
                   <SelectValue placeholder="Selecione uma categoria" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockCategories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.name}>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={String(cat.id)}>
                       {cat.name}
                     </SelectItem>
                   ))}
@@ -196,7 +255,7 @@ export function ProductEditor() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {variations.map((variation, index) => (
+              {variations.map((variation) => (
                 <div
                   key={variation.id}
                   className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-neutral-50 rounded-lg"

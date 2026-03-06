@@ -1,3 +1,4 @@
+﻿import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { MessageCircle, UserCircle } from 'lucide-react';
@@ -10,9 +11,23 @@ import {
   TableHeader,
   TableRow,
 } from '../../components/ui/table';
-import { mockCustomers } from '../../data/mockData';
+import { useStore } from '../../contexts/StoreContext';
+import { Customer } from '../../types';
+import { fetchAdminCustomers } from '../../services/storefront';
 
 export function Customers() {
+  const { store } = useStore();
+  const [customers, setCustomers] = useState<Customer[]>([]);
+
+  useEffect(() => {
+    if (!store) return;
+    fetchAdminCustomers(store.id).then(setCustomers).catch(() => setCustomers([]));
+  }, [store]);
+
+  if (!store) {
+    return <div className="p-6">Carregando...</div>;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -34,7 +49,7 @@ export function Customers() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockCustomers.map((customer) => (
+            {customers.map((customer) => (
               <TableRow key={customer.id}>
                 <TableCell>
                   <div className="flex items-center gap-3">

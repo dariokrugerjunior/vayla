@@ -1,3 +1,4 @@
+﻿import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Eye, MessageCircle } from 'lucide-react';
@@ -12,34 +13,30 @@ import {
   TableRow,
 } from '../../components/ui/table';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../components/ui/select';
-import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '../../components/ui/dialog';
-import { mockOrders } from '../../data/mockData';
 import { Order } from '../../types';
+import { useStore } from '../../contexts/StoreContext';
+import { fetchAdminOrders } from '../../services/storefront';
 
-const statusColors = {
+const statusColors: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
   contacted: 'bg-blue-100 text-blue-800',
   confirmed: 'bg-purple-100 text-purple-800',
   completed: 'bg-green-100 text-green-800',
+  cancelled: 'bg-red-100 text-red-800',
 };
 
-const statusLabels = {
+const statusLabels: Record<string, string> = {
   pending: 'Pendente',
   contacted: 'Contatado',
   confirmed: 'Confirmado',
   completed: 'Concluído',
+  cancelled: 'Cancelado',
 };
 
 function OrderDetailsDialog({ order }: { order: Order }) {
@@ -86,7 +83,7 @@ function OrderDetailsDialog({ order }: { order: Order }) {
                   className="flex gap-4 p-3 bg-neutral-50 rounded-lg"
                 >
                   <img
-                    src={item.product.images[0]}
+                    src={item.product.images[0] || 'https://placehold.co/600x600?text=Produto'}
                     alt={item.product.name}
                     className="w-16 h-16 rounded-lg object-cover"
                   />
@@ -125,6 +122,18 @@ function OrderDetailsDialog({ order }: { order: Order }) {
 }
 
 export function Orders() {
+  const { store } = useStore();
+  const [orders, setOrders] = useState<Order[]>([]);
+
+  useEffect(() => {
+    if (!store) return;
+    fetchAdminOrders(store.id).then(setOrders).catch(() => setOrders([]));
+  }, [store]);
+
+  if (!store) {
+    return <div className="p-6">Carregando...</div>;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -148,7 +157,7 @@ export function Orders() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockOrders.map((order) => (
+            {orders.map((order) => (
               <TableRow key={order.id}>
                 <TableCell className="font-mono text-sm">{order.id}</TableCell>
                 <TableCell>

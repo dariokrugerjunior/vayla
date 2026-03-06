@@ -1,10 +1,13 @@
-export interface Product {
-  id: string;
+﻿export interface Product {
+  id: number;
+  slug: string;
   name: string;
   description: string;
+  shortDescription: string;
   price: number;
-  discountPrice?: number;
-  category: string;
+  discountPrice: number;
+  categoryId: number;
+  categoryName?: string;
   images: string[];
   variations: ProductVariation[];
   featured?: boolean;
@@ -12,14 +15,16 @@ export interface Product {
   createdAt: string;
   views?: number;
   sales?: number;
+  totalStock?: number;
 }
 
 export interface ProductVariation {
-  id: string;
+  id: number;
   color: string;
   size: string;
   stock: number;
   sku?: string;
+  priceOverride?: number;
 }
 
 export interface CartItem {
@@ -29,18 +34,18 @@ export interface CartItem {
 }
 
 export interface Order {
-  id: string;
-  customerId: string;
+  id: number;
+  orderNumber: string;
   customerName: string;
   customerPhone: string;
   items: CartItem[];
   total: number;
-  status: 'pending' | 'contacted' | 'confirmed' | 'completed';
+  status: 'pending' | 'contacted' | 'confirmed' | 'completed' | 'cancelled';
   createdAt: string;
 }
 
 export interface Customer {
-  id: string;
+  id: number;
   name: string;
   phone: string;
   lastInteraction: string;
@@ -48,18 +53,20 @@ export interface Customer {
 }
 
 export interface Store {
-  id: string;
+  id: number;
   name: string;
-  logo: string;
-  banner: string;
+  slug: string;
+  description: string;
+  logoUrl: string;
+  bannerUrl: string;
   primaryColor: string;
   domain: string;
+  subdomain: string;
   whatsappNumber: string;
-  whatsappMessageTemplate: string;
 }
 
 export interface Category {
-  id: string;
+  id: number;
   name: string;
   slug: string;
   productCount: number;

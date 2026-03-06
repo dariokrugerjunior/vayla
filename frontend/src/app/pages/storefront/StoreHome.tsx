@@ -1,22 +1,34 @@
-import { useState } from 'react';
-import { Link } from 'react-router';
+﻿import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { SlidersHorizontal } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { ProductCard } from '../../components/storefront/ProductCard';
 import { FilterSheet } from '../../components/storefront/FilterSheet';
 import { useStore } from '../../contexts/StoreContext';
-import { mockProducts } from '../../data/mockData';
+import { Category, Product } from '../../types';
+import { fetchCategories, fetchProducts } from '../../services/storefront';
 
 export function StoreHome() {
-  const { store } = useStore();
+  const { store, storeSlug } = useStore();
   const [filterOpen, setFilterOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
 
-  const featuredProducts = mockProducts.filter((p) => p.featured);
-  const filteredProducts = mockProducts.filter((product) => {
-    if (selectedCategory && product.category !== selectedCategory) return false;
+  useEffect(() => {
+    if (!storeSlug) return;
+    fetchProducts(storeSlug).then(setProducts).catch(() => setProducts([]));
+    fetchCategories(storeSlug).then(setCategories).catch(() => setCategories([]));
+  }, [storeSlug]);
+
+  if (!store) {
+    return <div className="p-6">Carregando...</div>;
+  }
+
+  const featuredProducts = products.filter((p) => p.featured);
+  const filteredProducts = products.filter((product) => {
+    if (selectedCategoryId && product.categoryId !== selectedCategoryId) return false;
     if (product.price < priceRange[0] || product.price > priceRange[1]) return false;
     return true;
   });
@@ -26,7 +38,7 @@ export function StoreHome() {
       {/* Hero Banner */}
       <section className="relative h-[400px] md:h-[500px] overflow-hidden">
         <img
-          src={store.banner}
+          src={store.bannerUrl || 'https://placehold.co/1200x500?text=Banner'}
           alt="Banner"
           className="w-full h-full object-cover"
         />
@@ -100,10 +112,11 @@ export function StoreHome() {
       <FilterSheet
         open={filterOpen}
         onOpenChange={setFilterOpen}
-        selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
+        selectedCategoryId={selectedCategoryId}
+        onCategoryChange={setSelectedCategoryId}
         priceRange={priceRange}
         onPriceRangeChange={setPriceRange}
+        categories={categories}
       />
     </div>
   );

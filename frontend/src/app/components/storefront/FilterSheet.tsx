@@ -1,24 +1,26 @@
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
+﻿import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
 import { Button } from '../ui/button';
 import { Slider } from '../ui/slider';
-import { mockCategories } from '../../data/mockData';
+import { Category } from '../../types';
 
 interface FilterSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  selectedCategory: string | null;
-  onCategoryChange: (category: string | null) => void;
+  selectedCategoryId: number | null;
+  onCategoryChange: (categoryId: number | null) => void;
   priceRange: [number, number];
   onPriceRangeChange: (range: [number, number]) => void;
+  categories: Category[];
 }
 
 export function FilterSheet({
   open,
   onOpenChange,
-  selectedCategory,
+  selectedCategoryId,
   onCategoryChange,
   priceRange,
   onPriceRangeChange,
+  categories,
 }: FilterSheetProps) {
   const handleReset = () => {
     onCategoryChange(null);
@@ -41,19 +43,19 @@ export function FilterSheet({
                 onClick={() => onCategoryChange(null)}
                 className={`
                   w-full text-left px-3 py-2 rounded-lg transition-colors
-                  ${!selectedCategory ? 'bg-indigo-50 text-indigo-600' : 'hover:bg-neutral-100'}
+                  ${!selectedCategoryId ? 'bg-indigo-50 text-indigo-600' : 'hover:bg-neutral-100'}
                 `}
               >
                 Todas
               </button>
-              {mockCategories.map((category) => (
+              {categories.map((category) => (
                 <button
                   key={category.id}
-                  onClick={() => onCategoryChange(category.name)}
+                  onClick={() => onCategoryChange(category.id)}
                   className={`
                     w-full text-left px-3 py-2 rounded-lg transition-colors
                     ${
-                      selectedCategory === category.name
+                      selectedCategoryId === category.id
                         ? 'bg-indigo-50 text-indigo-600'
                         : 'hover:bg-neutral-100'
                     }

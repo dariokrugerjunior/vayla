@@ -10,6 +10,7 @@ type Category struct {
 	Description string    `json:"description"`
 	IsActive    bool      `json:"is_active"`
 	SortOrder   int       `json:"sort_order"`
+	ProductCount int      `json:"product_count"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }

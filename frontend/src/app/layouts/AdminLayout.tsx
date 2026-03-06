@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation } from 'react-router';
+﻿import { Outlet, Link, useLocation } from 'react-router';
 import {
   LayoutDashboard,
   Package,
@@ -33,6 +33,10 @@ export function AdminLayout() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  if (!store) {
+    return <div className="p-6">Carregando...</div>;
+  }
+
   const isActive = (href: string) => {
     if (href === '/admin') {
       return location.pathname === href;
@@ -63,7 +67,7 @@ export function AdminLayout() {
           <div className="flex items-center justify-between h-16 px-6 border-b border-neutral-200">
             <div className="flex items-center gap-3">
               <img
-                src={store.logo}
+                src={store.logoUrl || 'https://placehold.co/64x64?text=Logo'}
                 alt={store.name}
                 className="w-8 h-8 rounded-full object-cover"
               />

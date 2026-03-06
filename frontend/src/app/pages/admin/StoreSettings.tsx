@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Upload } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -9,12 +9,23 @@ import { toast } from 'sonner';
 
 export function StoreSettings() {
   const { store, updateStore } = useStore();
-  const [name, setName] = useState(store.name);
-  const [domain, setDomain] = useState(store.domain);
-  const [primaryColor, setPrimaryColor] = useState(store.primaryColor);
+  const [name, setName] = useState('');
+  const [domain, setDomain] = useState('');
+  const [primaryColor, setPrimaryColor] = useState('#111111');
 
-  const handleSave = () => {
-    updateStore({ name, domain, primaryColor });
+  useEffect(() => {
+    if (!store) return;
+    setName(store.name);
+    setDomain(store.domain || store.subdomain || '');
+    setPrimaryColor(store.primaryColor);
+  }, [store]);
+
+  if (!store) {
+    return <div className="p-6">Carregando...</div>;
+  }
+
+  const handleSave = async () => {
+    await updateStore({ name, domain, primaryColor });
     toast.success('Configurações salvas com sucesso!');
   };
 
@@ -71,7 +82,7 @@ export function StoreSettings() {
             <Label>Logo da Loja</Label>
             <div className="flex items-center gap-6 mt-3">
               <img
-                src={store.logo}
+                src={store.logoUrl || 'https://placehold.co/200x200?text=Logo'}
                 alt="Logo"
                 className="w-24 h-24 rounded-full object-cover border-2 border-neutral-200"
               />
@@ -92,7 +103,7 @@ export function StoreSettings() {
             <Label>Banner Principal</Label>
             <div className="mt-3">
               <img
-                src={store.banner}
+                src={store.bannerUrl || 'https://placehold.co/1200x400?text=Banner'}
                 alt="Banner"
                 className="w-full h-40 rounded-xl object-cover border-2 border-neutral-200"
               />
