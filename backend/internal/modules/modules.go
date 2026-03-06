@@ -1,0 +1,80 @@
+package modules
+
+import (
+	"multi-tennet/internal/http/handlers"
+
+	"github.com/gin-gonic/gin"
+)
+
+func RegisterPublicRoutes(router *gin.Engine, h *handlers.HandlerContainer) {
+	router.GET("/stores/:slug", h.GetStore)
+	router.GET("/stores/:slug/categories", h.ListCategories)
+	router.GET("/stores/:slug/products", h.ListProducts)
+	router.GET("/stores/:slug/products/:productSlug", h.GetProduct)
+	router.GET("/stores/id/:storeID", h.GetStoreByID)
+	router.GET("/stores/id/:storeID/categories", h.ListCategoriesByID)
+	router.GET("/stores/id/:storeID/products", h.ListProductsByID)
+	router.GET("/stores/id/:storeID/products/:productSlug", h.GetProductByIDStore)
+	router.GET("/stores/id/:storeID/banner-settings", h.GetStoreBannerSettingsByID)
+	router.POST("/checkout/whatsapp", h.CheckoutWhatsApp)
+}
+
+func RegisterAdminRoutes(router *gin.Engine, h *handlers.HandlerContainer) {
+	admin := router.Group("/admin")
+	admin.Use(h.RequireStoreAdminAuth())
+	admin.GET("/products", h.AdminListProducts)
+	admin.GET("/products/:id", h.AdminGetProduct)
+	admin.POST("/products", h.AdminCreateProduct)
+	admin.PUT("/products/:id", h.AdminUpdateProduct)
+	admin.GET("/categories", h.AdminListCategories)
+	admin.POST("/categories", h.AdminCreateCategory)
+	admin.PUT("/categories/:id", h.AdminUpdateCategory)
+	admin.DELETE("/categories/:id", h.AdminDeleteCategory)
+	admin.GET("/orders", h.AdminListOrders)
+	admin.DELETE("/orders/:id", h.AdminDeleteOrder)
+	admin.PUT("/orders/:id/status", h.AdminUpdateOrderStatus)
+	admin.GET("/customers", h.AdminListCustomers)
+	admin.PUT("/customers/:id", h.AdminUpdateCustomer)
+	admin.DELETE("/customers/:id", h.AdminDeleteCustomer)
+	admin.GET("/inventory", h.AdminListInventory)
+	admin.PUT("/inventory/:variantID", h.AdminUpdateInventory)
+	admin.GET("/dashboard", h.AdminDashboard)
+	admin.GET("/analytics", h.AdminAnalytics)
+	admin.GET("/store", h.AdminGetStore)
+	admin.PUT("/store", h.AdminUpdateStore)
+	admin.GET("/whatsapp-settings", h.AdminGetWhatsAppSettings)
+	admin.PUT("/whatsapp-settings", h.AdminUpdateWhatsAppSettings)
+	admin.GET("/banner-settings", h.AdminGetBannerSettings)
+	admin.PUT("/banner-settings", h.AdminUpdateBannerSettings)
+
+	storeAdmin := router.Group("/stores/id/:storeID/admin")
+	storeAdmin.POST("/login", h.AdminLoginByStoreID)
+
+	protected := storeAdmin.Group("")
+	protected.Use(h.RequireStoreAdminAuth())
+	protected.GET("/products", h.AdminListProducts)
+	protected.GET("/products/:id", h.AdminGetProduct)
+	protected.POST("/products", h.AdminCreateProduct)
+	protected.PUT("/products/:id", h.AdminUpdateProduct)
+	protected.GET("/categories", h.AdminListCategories)
+	protected.POST("/categories", h.AdminCreateCategory)
+	protected.PUT("/categories/:id", h.AdminUpdateCategory)
+	protected.DELETE("/categories/:id", h.AdminDeleteCategory)
+	protected.GET("/orders", h.AdminListOrders)
+	protected.DELETE("/orders/:id", h.AdminDeleteOrder)
+	protected.PUT("/orders/:id/status", h.AdminUpdateOrderStatus)
+	protected.GET("/customers", h.AdminListCustomers)
+	protected.PUT("/customers/:id", h.AdminUpdateCustomer)
+	protected.DELETE("/customers/:id", h.AdminDeleteCustomer)
+	protected.GET("/inventory", h.AdminListInventory)
+	protected.PUT("/inventory/:variantID", h.AdminUpdateInventory)
+	protected.GET("/dashboard", h.AdminDashboard)
+	protected.GET("/analytics", h.AdminAnalytics)
+	protected.GET("/store", h.AdminGetStore)
+	protected.PUT("/store", h.AdminUpdateStore)
+	protected.GET("/whatsapp-settings", h.AdminGetWhatsAppSettings)
+	protected.PUT("/whatsapp-settings", h.AdminUpdateWhatsAppSettings)
+	protected.GET("/banner-settings", h.AdminGetBannerSettings)
+	protected.PUT("/banner-settings", h.AdminUpdateBannerSettings)
+}
+
