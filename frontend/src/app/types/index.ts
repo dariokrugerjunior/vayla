@@ -65,6 +65,19 @@ export interface Store {
   whatsappNumber: string;
 }
 
+export interface StoreBannerSettings {
+  storeId: number;
+  title: string;
+  subtitle: string;
+  buttonText: string;
+  buttonUrl: string;
+  titleColor: string;
+  subtitleColor: string;
+  buttonBgColor: string;
+  buttonTextColor: string;
+  isActive: boolean;
+}
+
 export interface Category {
   id: number;
   name: string;

@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router';
+import { useParams, Link, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { ChevronLeft, Minus, Plus, Check, ShoppingCart } from 'lucide-react';
 import { Button } from '../../components/ui/button';
@@ -8,13 +8,14 @@ import { ProductCard } from '../../components/storefront/ProductCard';
 import { useCart } from '../../contexts/CartContext';
 import { useStore } from '../../contexts/StoreContext';
 import { Product } from '../../types';
-import { checkoutWhatsApp, fetchProduct, fetchProducts } from '../../services/storefront';
+import { fetchProduct, fetchProducts } from '../../services/storefront';
 import { toast } from 'sonner';
 
 export function ProductDetails() {
   const { slug } = useParams();
   const { addToCart } = useCart();
-  const { store, storeSlug } = useStore();
+  const { store, storeID } = useStore();
+  const navigate = useNavigate();
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -23,12 +24,12 @@ export function ProductDetails() {
   const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
-    if (!slug || !storeSlug) return;
-    fetchProduct(storeSlug, slug)
+    if (!slug || !storeID) return;
+    fetchProduct(storeID, slug)
       .then(async (p) => {
         setProduct(p);
         try {
-          const list = await fetchProducts(storeSlug);
+          const list = await fetchProducts(storeID);
           const related = list.filter((item) => item.categoryId === p.categoryId && item.id !== p.id);
           setRelatedProducts(related.slice(0, 4));
         } catch {
@@ -36,13 +37,13 @@ export function ProductDetails() {
         }
       })
       .catch(() => setProduct(null));
-  }, [slug, storeSlug]);
+  }, [slug, storeID]);
 
   if (!product || !store) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <h2 className="text-2xl font-bold mb-4">Produto não encontrado</h2>
-        <Link to="/">
+        <Link to={`/stores/id/${storeID}`}>
           <Button>Voltar para a loja</Button>
         </Link>
       </div>
@@ -65,21 +66,8 @@ export function ProductDetails() {
 
   const handleBuyWhatsApp = async () => {
     if (!selectedVariation) return;
-    try {
-      const result = await checkoutWhatsApp({
-        store_slug: storeSlug,
-        items: [
-          {
-            product_id: product.id,
-            variant_id: selectedVariation.id,
-            quantity,
-          },
-        ],
-      });
-      window.open(result.whatsapp_url, '_blank');
-    } catch (err) {
-      toast.error((err as Error).message);
-    }
+    addToCart(product, selectedVariation, quantity);
+    navigate(`/stores/id/${storeID}/checkout`);
   };
 
   const price = product.discountPrice || product.price;
@@ -89,7 +77,7 @@ export function ProductDetails() {
     <div>
       {/* Back Button */}
       <div className="container mx-auto px-4 py-4">
-        <Link to="/" className="inline-flex items-center text-neutral-600 hover:text-neutral-900">
+        <Link to={`/stores/id/${storeID}`} className="inline-flex items-center text-neutral-600 hover:text-neutral-900">
           <ChevronLeft className="h-4 w-4 mr-1" />
           Voltar
         </Link>
@@ -277,3 +265,4 @@ export function ProductDetails() {
     </div>
   );
 }
+

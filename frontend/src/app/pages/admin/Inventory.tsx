@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from 'react';
 import { AlertTriangle, Package } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
@@ -13,7 +14,7 @@ import {
 } from '../../components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { useStore } from '../../contexts/StoreContext';
-import { fetchAdminInventory } from '../../services/storefront';
+import { fetchAdminInventory, updateAdminInventory } from '../../services/storefront';
 import { Product, ProductVariation } from '../../types';
 
 interface InventoryItem {
@@ -22,13 +23,47 @@ interface InventoryItem {
 }
 
 export function Inventory() {
-  const { store } = useStore();
+  const { store, storeID } = useStore();
   const [allVariations, setAllVariations] = useState<InventoryItem[]>([]);
+  const [stockInputs, setStockInputs] = useState<Record<number, string>>({});
 
   useEffect(() => {
     if (!store) return;
-    fetchAdminInventory(store.id).then(setAllVariations).catch(() => setAllVariations([]));
+    fetchAdminInventory(store.id)
+      .then((items) => {
+        setAllVariations(items);
+        const nextInputs: Record<number, string> = {};
+        items.forEach((item) => {
+          nextInputs[item.variation.id] = String(item.variation.stock);
+        });
+        setStockInputs(nextInputs);
+      })
+      .catch(() => setAllVariations([]));
   }, [store]);
+
+  const handleUpdateStock = async (variantId: number) => {
+    const raw = stockInputs[variantId] ?? '0';
+    const stockQuantity = Number(raw);
+    if (!Number.isFinite(stockQuantity) || stockQuantity < 0 || !Number.isInteger(stockQuantity)) {
+      toast.error('Informe um estoque inteiro maior ou igual a 0');
+      return;
+    }
+
+    try {
+      const updated = await updateAdminInventory(storeID, variantId, stockQuantity);
+      setAllVariations((prev) =>
+        prev.map((item) =>
+          item.variation.id === variantId
+            ? { ...item, variation: { ...item.variation, stock: updated.stock_quantity } }
+            : item
+        )
+      );
+      setStockInputs((prev) => ({ ...prev, [variantId]: String(updated.stock_quantity) }));
+      toast.success('Estoque atualizado!');
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  };
 
   if (!store) {
     return <div className="p-6">Carregando...</div>;
@@ -44,7 +79,6 @@ export function Inventory() {
         <p className="text-neutral-600">Gerencie o estoque de todas as variações</p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -82,7 +116,6 @@ export function Inventory() {
         </Card>
       </div>
 
-      {/* Inventory Table */}
       <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
         <Table>
           <TableHeader>
@@ -101,9 +134,9 @@ export function Inventory() {
                 item.variation.stock === 0
                   ? 'out'
                   : item.variation.stock <= 5
-                  ? 'low'
-                  : 'good';
-              
+                    ? 'low'
+                    : 'good';
+
               return (
                 <TableRow key={item.variation.id}>
                   <TableCell>
@@ -131,7 +164,13 @@ export function Inventory() {
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
-                        defaultValue={item.variation.stock}
+                        value={stockInputs[item.variation.id] ?? ''}
+                        onChange={(e) =>
+                          setStockInputs((prev) => ({
+                            ...prev,
+                            [item.variation.id]: e.target.value,
+                          }))
+                        }
                         className="w-20"
                       />
                       <span className="text-sm text-neutral-500">un</span>
@@ -147,7 +186,7 @@ export function Inventory() {
                     {stockStatus === 'good' && <Badge variant="secondary">Disponível</Badge>}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => handleUpdateStock(item.variation.id)}>
                       Atualizar
                     </Button>
                   </TableCell>

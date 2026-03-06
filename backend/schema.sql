@@ -212,6 +212,25 @@ CREATE TABLE IF NOT EXISTS whatsapp_settings (
 
 CREATE INDEX IF NOT EXISTS idx_whatsapp_settings_store_id ON whatsapp_settings(store_id);
 
+CREATE TABLE IF NOT EXISTS store_banners (
+	id BIGSERIAL PRIMARY KEY,
+	store_id BIGINT NOT NULL REFERENCES stores(id) ON DELETE RESTRICT,
+	title TEXT NOT NULL DEFAULT 'Coleção Outono/Inverno 2026',
+	subtitle TEXT NOT NULL DEFAULT 'Descubra as últimas tendências em moda com até 30% de desconto',
+	button_text TEXT NOT NULL DEFAULT 'Ver Coleção',
+	button_url TEXT NOT NULL DEFAULT '',
+	title_color TEXT NOT NULL DEFAULT '#FFFFFF',
+	subtitle_color TEXT NOT NULL DEFAULT '#F5F5F5',
+	button_bg_color TEXT NOT NULL DEFAULT '#FFFFFF',
+	button_text_color TEXT NOT NULL DEFAULT '#111111',
+	is_active BOOLEAN NOT NULL DEFAULT TRUE,
+	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	UNIQUE (store_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_store_banners_store_id ON store_banners(store_id);
+
 CREATE TABLE IF NOT EXISTS product_views (
 	id BIGSERIAL PRIMARY KEY,
 	store_id BIGINT NOT NULL REFERENCES stores(id) ON DELETE RESTRICT,

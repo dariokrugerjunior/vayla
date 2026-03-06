@@ -1,11 +1,10 @@
-﻿package handlers
+package handlers
 
 import (
 	"fmt"
 	"strconv"
 	"strings"
 
-	api "multi-tennet/internal/http"
 	"multi-tennet/internal/model"
 	"multi-tennet/internal/util"
 
@@ -13,56 +12,63 @@ import (
 )
 
 type AdminProductVariantInput struct {
-	SKU   string `json:"sku"`
-	Color string `json:"color"`
-	Size  string `json:"size"`
-	Stock int    `json:"stock"`
+	SKU           string  `json:"sku"`
+	Color         string  `json:"color"`
+	Size          string  `json:"size"`
+	Stock         int     `json:"stock"`
 	PriceOverride float64 `json:"price_override"`
-	IsActive *bool `json:"is_active"`
+	IsActive      *bool   `json:"is_active"`
 }
 
 type AdminCreateProductRequest struct {
-	StoreID          int64   `json:"store_id"`
-	CategoryID       int64   `json:"category_id"`
-	Name             string  `json:"name"`
-	Slug             string  `json:"slug"`
-	Description      string  `json:"description"`
-	ShortDescription string  `json:"short_description"`
-	SKU              string  `json:"sku"`
-	Price            float64 `json:"price"`
-	DiscountPrice    float64 `json:"discount_price"`
-	Brand            string  `json:"brand"`
-	Gender           string  `json:"gender"`
-	IsFeatured       bool    `json:"is_featured"`
-	IsActive         *bool   `json:"is_active"`
+	StoreID          int64                      `json:"store_id"`
+	CategoryID       int64                      `json:"category_id"`
+	Name             string                     `json:"name"`
+	Slug             string                     `json:"slug"`
+	Description      string                     `json:"description"`
+	ShortDescription string                     `json:"short_description"`
+	SKU              string                     `json:"sku"`
+	Price            float64                    `json:"price"`
+	DiscountPrice    float64                    `json:"discount_price"`
+	Brand            string                     `json:"brand"`
+	Gender           string                     `json:"gender"`
+	IsFeatured       bool                       `json:"is_featured"`
+	IsActive         *bool                      `json:"is_active"`
 	Variants         []AdminProductVariantInput `json:"variants"`
 }
 
 func (h *HandlerContainer) AdminCreateProduct(c *gin.Context) {
-	var req AdminCreateProductRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		api.JSONError(c, 400, err)
+	storeID, err := getStoreIDParam(c)
+	if err != nil {
+		JSONError(c, 400, err)
 		return
 	}
 
-	if req.StoreID <= 0 {
-		api.JSONError(c, 400, errInvalid("store_id"))
+	var req AdminCreateProductRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		JSONError(c, 400, err)
 		return
 	}
+
+	if req.StoreID > 0 && req.StoreID != storeID {
+		JSONError(c, 403, errInvalid("store_id"))
+		return
+	}
+	req.StoreID = storeID
 	if req.CategoryID <= 0 {
-		api.JSONError(c, 400, errInvalid("category_id"))
+		JSONError(c, 400, errInvalid("category_id"))
 		return
 	}
 	if strings.TrimSpace(req.Name) == "" {
-		api.JSONError(c, 400, errMissing("name"))
+		JSONError(c, 400, errMissing("name"))
 		return
 	}
 	if req.Price < 0 {
-		api.JSONError(c, 400, fmt.Errorf("price must be >= 0"))
+		JSONError(c, 400, fmt.Errorf("price must be >= 0"))
 		return
 	}
 	if req.DiscountPrice < 0 {
-		api.JSONError(c, 400, fmt.Errorf("discount_price must be >= 0"))
+		JSONError(c, 400, fmt.Errorf("discount_price must be >= 0"))
 		return
 	}
 
@@ -94,43 +100,43 @@ func (h *HandlerContainer) AdminCreateProduct(c *gin.Context) {
 
 	id, err := h.ProductRepo.Create(c.Request.Context(), &p)
 	if err != nil {
-		api.JSONError(c, 500, err)
+		JSONError(c, 500, err)
 		return
 	}
 
 	if err := h.insertVariants(c, id, req.Variants); err != nil {
-		api.JSONError(c, 500, err)
+		JSONError(c, 500, err)
 		return
 	}
 
-	api.JSONCreated(c, gin.H{"id": id})
+	JSONCreated(c, gin.H{"id": id})
 }
 
 func (h *HandlerContainer) AdminUpdateProduct(c *gin.Context) {
 	storeID, err := getStoreIDParam(c)
 	if err != nil {
-		api.JSONError(c, 400, err)
+		JSONError(c, 400, err)
 		return
 	}
 	idStr := c.Param("id")
 	productID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil || productID <= 0 {
-		api.JSONError(c, 400, errInvalid("id"))
+		JSONError(c, 400, errInvalid("id"))
 		return
 	}
 
 	var req AdminCreateProductRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		api.JSONError(c, 400, err)
+		JSONError(c, 400, err)
 		return
 	}
 
 	if req.CategoryID <= 0 {
-		api.JSONError(c, 400, errInvalid("category_id"))
+		JSONError(c, 400, errInvalid("category_id"))
 		return
 	}
 	if strings.TrimSpace(req.Name) == "" {
-		api.JSONError(c, 400, errMissing("name"))
+		JSONError(c, 400, errMissing("name"))
 		return
 	}
 
@@ -168,16 +174,16 @@ func (h *HandlerContainer) AdminUpdateProduct(c *gin.Context) {
 		req.Price, req.DiscountPrice, strings.TrimSpace(req.Brand), strings.TrimSpace(req.Gender),
 		req.IsFeatured, isActive,
 	); err != nil {
-		api.JSONError(c, 500, err)
+		JSONError(c, 500, err)
 		return
 	}
 
 	if err := h.replaceVariants(c, productID, req.Variants); err != nil {
-		api.JSONError(c, 500, err)
+		JSONError(c, 500, err)
 		return
 	}
 
-	api.JSONOK(c, gin.H{"id": productID})
+	JSONOK(c, gin.H{"id": productID})
 }
 
 func (h *HandlerContainer) insertVariants(c *gin.Context, productID int64, variants []AdminProductVariantInput) error {
@@ -216,4 +222,3 @@ func (h *HandlerContainer) replaceVariants(c *gin.Context, productID int64, vari
 	}
 	return h.insertVariants(c, productID, variants)
 }
-

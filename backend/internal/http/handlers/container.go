@@ -10,17 +10,18 @@ import (
 )
 
 type HandlerContainer struct {
-	StoreRepo     *repository.StoreRepository
-	CategoryRepo  *repository.CategoryRepository
-	ProductRepo   *repository.ProductRepository
-	OrderRepo     *repository.OrderRepository
-	WhatsRepo     *repository.WhatsAppRepository
-	CheckoutSvc   *service.CheckoutService
-	DB            *sql.DB
-	Redis         *redis.Client
+	StoreRepo    *repository.StoreRepository
+	CategoryRepo *repository.CategoryRepository
+	ProductRepo  *repository.ProductRepository
+	OrderRepo    *repository.OrderRepository
+	WhatsRepo    *repository.WhatsAppRepository
+	CheckoutSvc  *service.CheckoutService
+	JWTSecret    string
+	DB           *sql.DB
+	Redis        *redis.Client
 }
 
-func NewHandlerContainer(db *sql.DB, rdb *redis.Client) *HandlerContainer {
+func NewHandlerContainer(db *sql.DB, rdb *redis.Client, jwtSecret string) *HandlerContainer {
 	storeRepo := repository.NewStoreRepository(db)
 	categoryRepo := repository.NewCategoryRepository(db)
 	productRepo := repository.NewProductRepository(db)
@@ -36,8 +37,8 @@ func NewHandlerContainer(db *sql.DB, rdb *redis.Client) *HandlerContainer {
 		OrderRepo:    orderRepo,
 		WhatsRepo:    whatsRepo,
 		CheckoutSvc:  checkoutSvc,
+		JWTSecret:    jwtSecret,
 		DB:           db,
 		Redis:        rdb,
 	}
 }
-

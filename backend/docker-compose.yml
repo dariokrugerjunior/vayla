@@ -6,11 +6,11 @@ services:
     container_name: multi-tennet-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-multi_tennet}
     ports:
-      - "${DB_PORT}:5432"
+      - "${DB_PORT:-4567}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
@@ -19,7 +19,7 @@ services:
     networks:
       - multi-tennet-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-multi_tennet}"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -28,9 +28,9 @@ services:
     image: redis:7-alpine
     container_name: multi-tennet-redis
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-redis}"]
     ports:
-      - "${REDIS_PORT}:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -62,4 +62,3 @@ networks:
 volumes:
   postgres_data:
   redis_data:
-

@@ -22,8 +22,10 @@ import { Product } from '../../types';
 import { fetchAdminProducts } from '../../services/storefront';
 
 export function Products() {
-  const { store } = useStore();
+  const { store, storeID } = useStore();
   const [products, setProducts] = useState<Product[]>([]);
+  const baseAdminPath = `/stores/id/${storeID}/admin`;
+  const baseStorePath = `/stores/id/${storeID}`;
 
   useEffect(() => {
     if (!store) return;
@@ -41,7 +43,7 @@ export function Products() {
           <h1 className="text-3xl font-bold mb-2">Produtos</h1>
           <p className="text-neutral-600">Gerencie seu catálogo de produtos</p>
         </div>
-        <Link to="/admin/products/new">
+        <Link to={`${baseAdminPath}/products/new`}>
           <Button className="rounded-full">
             <Plus className="h-4 w-4 mr-2" />
             Adicionar Produto
@@ -117,13 +119,13 @@ export function Products() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild>
-                          <Link to={`/admin/products/${product.id}/edit`}>
+                          <Link to={`${baseAdminPath}/products/${product.id}/edit`}>
                             <Edit className="h-4 w-4 mr-2" />
                             Editar
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
-                          <Link to={`/product/${product.slug || product.id}`}>
+                          <Link to={`${baseStorePath}/product/${product.slug || product.id}`}>
                             <Eye className="h-4 w-4 mr-2" />
                             Ver na Loja
                           </Link>

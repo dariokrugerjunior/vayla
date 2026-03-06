@@ -4,6 +4,10 @@ INSERT INTO stores (id, name, slug, description, whatsapp_number, logo_url, bann
 VALUES
 (1, 'Loja Modelo', 'loja-modelo', 'Loja de roupas para demonstração', '5511999999999', NULL, NULL, '#111111', NULL, 'loja-modelo', TRUE);
 
+INSERT INTO users (id, store_id, name, email, password_hash, role, is_active)
+VALUES
+(1, 1, 'Admin Loja Modelo', 'admin@lojamodelo.local', '$2a$06$1TyABB7XVQ2UwMW63TTabeql3zQpqGgGYd/7fiD4s4z.g/XY8bO66', 'owner', TRUE);
+
 INSERT INTO categories (id, store_id, name, slug, description, is_active, sort_order)
 VALUES
 (1, 1, 'Camisetas', 'camisetas', 'Camisetas básicas e estampadas', TRUE, 1),
@@ -34,6 +38,7 @@ VALUES
 (1, 1, '5511999999999', 'Olá! Quero fazer este pedido:', 'Olá! Quero finalizar meu carrinho:', 'Olá! Quero comprar este item:', TRUE);
 
 SELECT setval('stores_id_seq', (SELECT MAX(id) FROM stores));
+SELECT setval('users_id_seq', (SELECT MAX(id) FROM users));
 SELECT setval('categories_id_seq', (SELECT MAX(id) FROM categories));
 SELECT setval('products_id_seq', (SELECT MAX(id) FROM products));
 SELECT setval('product_variants_id_seq', (SELECT MAX(id) FROM product_variants));

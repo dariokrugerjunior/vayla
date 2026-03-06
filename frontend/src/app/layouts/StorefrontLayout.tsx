@@ -9,21 +9,27 @@ import { WhatsAppButton } from '../components/storefront/WhatsAppButton';
 import { Sheet, SheetContent, SheetTrigger } from '../components/ui/sheet';
 import { Category } from '../types';
 import { fetchCategories } from '../services/storefront';
+import { StoreNotFound } from '../components/StoreNotFound';
 
 export function StorefrontLayout() {
   const { items } = useCart();
-  const { store, storeSlug, isLoading } = useStore();
+  const { store, storeID, storeNotFound, isLoading } = useStore();
   const location = useLocation();
   const [categories, setCategories] = useState<Category[]>([]);
+  const baseStorePath = `/stores/id/${storeID}`;
 
   useEffect(() => {
-    if (!storeSlug) return;
-    fetchCategories(storeSlug)
+    if (!storeID) return;
+    fetchCategories(storeID)
       .then(setCategories)
       .catch(() => setCategories([]));
-  }, [storeSlug]);
+  }, [storeID]);
 
   const cartCount = items.reduce((total, item) => total + item.quantity, 0);
+
+  if (storeNotFound) {
+    return <StoreNotFound storeID={storeID} />;
+  }
 
   if (isLoading || !store) {
     return <div className="p-6">Carregando loja...</div>;
@@ -31,12 +37,10 @@ export function StorefrontLayout() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      {/* Header */}
       <header className="sticky top-0 z-50 bg-white border-b border-neutral-200">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16 gap-4">
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-3">
+            <Link to={baseStorePath} className="flex items-center gap-3">
               <img
                 src={store.logoUrl || 'https://placehold.co/64x64?text=Logo'}
                 alt={store.name}
@@ -45,7 +49,6 @@ export function StorefrontLayout() {
               <span className="font-semibold text-lg hidden sm:block">{store.name}</span>
             </Link>
 
-            {/* Search - Desktop */}
             <div className="hidden md:flex flex-1 max-w-md">
               <div className="relative w-full">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
@@ -57,9 +60,8 @@ export function StorefrontLayout() {
               </div>
             </div>
 
-            {/* Actions */}
             <div className="flex items-center gap-2">
-              <Link to="/cart">
+              <Link to={`${baseStorePath}/cart`}>
                 <Button variant="ghost" size="icon" className="relative">
                   <ShoppingCart className="h-5 w-5" />
                   {cartCount > 0 && (
@@ -70,7 +72,6 @@ export function StorefrontLayout() {
                 </Button>
               </Link>
 
-              {/* Mobile Menu */}
               <Sheet>
                 <SheetTrigger asChild>
                   <Button variant="ghost" size="icon" className="md:hidden">
@@ -93,7 +94,7 @@ export function StorefrontLayout() {
                         {categories.map((category) => (
                           <Link
                             key={category.id}
-                            to={`/?category=${category.slug}`}
+                            to={`${baseStorePath}?category=${category.slug}`}
                             className="text-neutral-600 hover:text-neutral-900 py-2"
                           >
                             {category.name}
@@ -108,14 +109,13 @@ export function StorefrontLayout() {
           </div>
         </div>
 
-        {/* Categories - Desktop */}
         <div className="hidden md:block border-t border-neutral-200">
           <div className="container mx-auto px-4">
             <div className="flex gap-6 py-3 overflow-x-auto">
               {categories.map((category) => (
                 <Link
                   key={category.id}
-                  to={`/?category=${category.slug}`}
+                  to={`${baseStorePath}?category=${category.slug}`}
                   className="text-sm text-neutral-600 hover:text-neutral-900 whitespace-nowrap"
                 >
                   {category.name}
@@ -126,12 +126,10 @@ export function StorefrontLayout() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main>
         <Outlet />
       </main>
 
-      {/* Footer */}
       <footer className="bg-white border-t border-neutral-200 mt-16">
         <div className="container mx-auto px-4 py-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -154,7 +152,7 @@ export function StorefrontLayout() {
                 {categories.slice(0, 4).map((category) => (
                   <Link
                     key={category.id}
-                    to={`/?category=${category.slug}`}
+                    to={`${baseStorePath}?category=${category.slug}`}
                     className="text-sm text-neutral-600 hover:text-neutral-900"
                   >
                     {category.name}
@@ -191,8 +189,7 @@ export function StorefrontLayout() {
         </div>
       </footer>
 
-      {/* Floating WhatsApp Button */}
-      {location.pathname !== '/checkout' && <WhatsAppButton />}
+      {location.pathname !== `${baseStorePath}/checkout` && <WhatsAppButton />}
     </div>
   );
 }

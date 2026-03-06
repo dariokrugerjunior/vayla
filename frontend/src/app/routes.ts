@@ -1,4 +1,5 @@
-﻿import { createBrowserRouter } from "react-router";
+﻿import { createBrowserRouter, redirect } from "react-router";
+import { STORE_ID, hasAdminToken } from "./services/api";
 import { StorefrontLayout } from "./layouts/StorefrontLayout";
 import { AdminLayout } from "./layouts/AdminLayout";
 import { StoreHome } from "./pages/storefront/StoreHome";
@@ -15,10 +16,26 @@ import { Inventory } from "./pages/admin/Inventory";
 import { Analytics } from "./pages/admin/Analytics";
 import { StoreSettings } from "./pages/admin/StoreSettings";
 import { WhatsAppSettings } from "./pages/admin/WhatsAppSettings";
+import { AdminLogin } from "./pages/admin/AdminLogin";
+
+const storeBasePath = `/stores/id/${STORE_ID}`;
+
+function requireAdminAuth(storeIDParam: string | undefined) {
+  const sid = Number(storeIDParam || 0);
+  if (!sid) {
+    return redirect(storeBasePath);
+  }
+  if (!hasAdminToken(sid)) {
+    return redirect(`/stores/id/${sid}/admin/login`);
+  }
+  return null;
+}
 
 export const router = createBrowserRouter([
+  { path: "/", loader: () => redirect(storeBasePath) },
+  { path: "/admin", loader: () => redirect(`${storeBasePath}/admin`) },
   {
-    path: "/",
+    path: "/stores/id/:storeID",
     Component: StorefrontLayout,
     children: [
       { index: true, Component: StoreHome },
@@ -28,7 +45,12 @@ export const router = createBrowserRouter([
     ],
   },
   {
-    path: "/admin",
+    path: "/stores/id/:storeID/admin/login",
+    Component: AdminLogin,
+  },
+  {
+    path: "/stores/id/:storeID/admin",
+    loader: ({ params }) => requireAdminAuth(params.storeID),
     Component: AdminLayout,
     children: [
       { index: true, Component: Dashboard },

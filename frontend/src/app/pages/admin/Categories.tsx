@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from 'react';
 import { Plus, Edit, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import {
@@ -12,16 +13,69 @@ import {
 } from '../../components/ui/table';
 import { useStore } from '../../contexts/StoreContext';
 import { Category } from '../../types';
-import { fetchAdminCategories } from '../../services/storefront';
+import {
+  createAdminCategory,
+  deleteAdminCategory,
+  fetchAdminCategories,
+  updateAdminCategory,
+} from '../../services/storefront';
 
 export function Categories() {
-  const { store } = useStore();
+  const { store, storeID } = useStore();
   const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
     if (!store) return;
     fetchAdminCategories(store.id).then(setCategories).catch(() => setCategories([]));
   }, [store]);
+
+  const handleCreateCategory = async () => {
+    const name = window.prompt('Nome da nova categoria:');
+    if (!name || !name.trim()) {
+      return;
+    }
+
+    try {
+      const created = await createAdminCategory(storeID, { name: name.trim() });
+      setCategories((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      toast.success('Categoria criada com sucesso!');
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  };
+
+  const handleEditCategory = async (category: Category) => {
+    const name = window.prompt('Novo nome da categoria:', category.name);
+    if (!name || !name.trim()) {
+      return;
+    }
+
+    try {
+      const updated = await updateAdminCategory(storeID, category.id, {
+        name: name.trim(),
+        slug: category.slug,
+      });
+      setCategories((prev) => prev.map((c) => (c.id === category.id ? { ...c, ...updated } : c)));
+      toast.success('Categoria atualizada com sucesso!');
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  };
+
+  const handleDeleteCategory = async (category: Category) => {
+    const ok = window.confirm(`Excluir a categoria "${category.name}"?`);
+    if (!ok) {
+      return;
+    }
+
+    try {
+      await deleteAdminCategory(storeID, category.id);
+      setCategories((prev) => prev.filter((c) => c.id !== category.id));
+      toast.success('Categoria excluída com sucesso!');
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  };
 
   if (!store) {
     return <div className="p-6">Carregando...</div>;
@@ -34,7 +88,7 @@ export function Categories() {
           <h1 className="text-3xl font-bold mb-2">Categorias</h1>
           <p className="text-neutral-600">Organize seu catálogo</p>
         </div>
-        <Button className="rounded-full">
+        <Button className="rounded-full" onClick={handleCreateCategory}>
           <Plus className="h-4 w-4 mr-2" />
           Nova Categoria
         </Button>
@@ -65,10 +119,15 @@ export function Categories() {
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <Button variant="ghost" size="icon">
+                    <Button variant="ghost" size="icon" onClick={() => handleEditCategory(category)}>
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="text-red-600">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-red-600"
+                      onClick={() => handleDeleteCategory(category)}
+                    >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>

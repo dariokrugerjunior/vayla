@@ -12,9 +12,18 @@ interface DashboardData {
   total_views: number;
   conversion_rate: number;
   orders_by_day: { label: string; orders: number }[];
+  orders_by_status: { status: string; orders: number }[];
   top_sold_products: Product[];
   top_viewed_products: Product[];
 }
+
+const statusLabels: Record<string, string> = {
+  pending: 'Pendentes',
+  contacted: 'Contatados',
+  confirmed: 'Confirmados',
+  completed: 'Concluídos',
+  cancelled: 'Cancelados',
+};
 
 export function Dashboard() {
   const { store } = useStore();
@@ -30,6 +39,7 @@ export function Dashboard() {
           total_views: d.total_views,
           conversion_rate: d.conversion_rate,
           orders_by_day: d.orders_by_day || [],
+          orders_by_status: d.orders_by_status || [],
           top_sold_products: d.top_sold_products || [],
           top_viewed_products: d.top_viewed_products || [],
         });
@@ -106,6 +116,21 @@ export function Dashboard() {
             <p className="text-xs text-green-600 mt-1">últimos 7 dias</p>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {data.orders_by_status.map((row) => (
+          <Card key={row.status}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-neutral-600">
+                {statusLabels[row.status] || row.status}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{row.orders}</div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Charts */}

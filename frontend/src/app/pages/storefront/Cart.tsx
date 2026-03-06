@@ -2,13 +2,16 @@
 import { Trash2, Minus, Plus, ShoppingBag } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { useCart } from '../../contexts/CartContext';
+import { useStore } from '../../contexts/StoreContext';
 import { motion } from 'motion/react';
 
 export function Cart() {
   const { items, updateQuantity, removeFromCart, getTotal } = useCart();
+  const { storeID } = useStore();
   const navigate = useNavigate();
 
   const total = getTotal();
+  const baseStorePath = `/stores/id/${storeID}`;
 
   if (items.length === 0) {
     return (
@@ -21,7 +24,7 @@ export function Cart() {
           <p className="text-neutral-600 mb-6">
             Adicione produtos ao carrinho para continuar comprando
           </p>
-          <Link to="/">
+          <Link to={baseStorePath}>
             <Button size="lg" className="rounded-full">
               Continuar Comprando
             </Button>
@@ -36,7 +39,6 @@ export function Cart() {
       <h1 className="text-3xl font-bold mb-8">Carrinho de Compras</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Cart Items */}
         <div className="lg:col-span-2 space-y-4">
           {items.map((item, index) => {
             const override = item.variation.priceOverride || 0;
@@ -113,11 +115,10 @@ export function Cart() {
           })}
         </div>
 
-        {/* Order Summary */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-xl p-6 border border-neutral-200 sticky top-20">
             <h2 className="text-xl font-bold mb-4">Resumo do Pedido</h2>
-            
+
             <div className="space-y-3 mb-6">
               <div className="flex justify-between">
                 <span className="text-neutral-600">
@@ -137,12 +138,12 @@ export function Cart() {
             <Button
               size="lg"
               className="w-full rounded-full mb-3"
-              onClick={() => navigate('/checkout')}
+              onClick={() => navigate(`${baseStorePath}/checkout`)}
             >
               Finalizar pelo WhatsApp
             </Button>
 
-            <Link to="/">
+            <Link to={baseStorePath}>
               <Button variant="outline" size="lg" className="w-full rounded-full">
                 Continuar Comprando
               </Button>

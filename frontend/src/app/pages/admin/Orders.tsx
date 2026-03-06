@@ -1,9 +1,11 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Eye, MessageCircle } from 'lucide-react';
+import { Eye, MessageCircle, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
+import { Input } from '../../components/ui/input';
 import {
   Table,
   TableBody,
@@ -21,7 +23,7 @@ import {
 } from '../../components/ui/dialog';
 import { Order } from '../../types';
 import { useStore } from '../../contexts/StoreContext';
-import { fetchAdminOrders } from '../../services/storefront';
+import { deleteAdminOrder, fetchAdminOrders, updateAdminOrderStatus } from '../../services/storefront';
 
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -39,14 +41,22 @@ const statusLabels: Record<string, string> = {
   cancelled: 'Cancelado',
 };
 
+function buildWhatsAppURL(order: Order): string | null {
+  const digits = (order.customerPhone || '').replace(/\D/g, '');
+  if (!digits) return null;
+  const message = `Olá ${order.customerName || ''}, sobre seu pedido #${order.orderNumber || order.id}.`;
+  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+}
+
 function OrderDetailsDialog({ order }: { order: Order }) {
+  const whatsappURL = useMemo(() => buildWhatsAppURL(order), [order]);
+
   return (
     <DialogContent className="max-w-2xl">
       <DialogHeader>
         <DialogTitle>Detalhes do Pedido #{order.id}</DialogTitle>
       </DialogHeader>
       <div className="space-y-6">
-        {/* Customer Info */}
         <div>
           <h3 className="font-semibold mb-3">Informações do Cliente</h3>
           <div className="grid grid-cols-2 gap-4 text-sm">
@@ -71,7 +81,6 @@ function OrderDetailsDialog({ order }: { order: Order }) {
           </div>
         </div>
 
-        {/* Products */}
         <div>
           <h3 className="font-semibold mb-3">Produtos</h3>
           <div className="space-y-3">
@@ -101,7 +110,6 @@ function OrderDetailsDialog({ order }: { order: Order }) {
           </div>
         </div>
 
-        {/* Total */}
         <div className="border-t pt-4">
           <div className="flex justify-between items-center">
             <span className="text-lg font-semibold">Total</span>
@@ -109,12 +117,20 @@ function OrderDetailsDialog({ order }: { order: Order }) {
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex gap-3">
-          <Button className="flex-1">
-            <MessageCircle className="h-4 w-4 mr-2" />
-            Abrir no WhatsApp
-          </Button>
+          {whatsappURL ? (
+            <Button asChild className="flex-1">
+              <a href={whatsappURL} target="_blank" rel="noreferrer">
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Abrir no WhatsApp
+              </a>
+            </Button>
+          ) : (
+            <Button className="flex-1" disabled>
+              <MessageCircle className="h-4 w-4 mr-2" />
+              WhatsApp indisponível
+            </Button>
+          )}
         </div>
       </div>
     </DialogContent>
@@ -122,13 +138,81 @@ function OrderDetailsDialog({ order }: { order: Order }) {
 }
 
 export function Orders() {
-  const { store } = useStore();
+  const { store, storeID } = useStore();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
+  const loadOrders = async () => {
+    if (!store) return;
+    try {
+      const data = await fetchAdminOrders(store.id, {
+        status: statusFilter || undefined,
+        date_from: dateFrom || undefined,
+        date_to: dateTo || undefined,
+      });
+      setOrders(data);
+    } catch {
+      setOrders([]);
+      toast.error('Não foi possível carregar pedidos');
+    }
+  };
 
   useEffect(() => {
-    if (!store) return;
-    fetchAdminOrders(store.id).then(setOrders).catch(() => setOrders([]));
+    loadOrders();
   }, [store]);
+
+  const handleDeleteOrder = async (order: Order) => {
+    const ok = window.confirm(`Excluir o pedido #${order.orderNumber || order.id}?`);
+    if (!ok) return;
+
+    try {
+      await deleteAdminOrder(storeID, order.id);
+      setOrders((prev) => prev.filter((o) => o.id !== order.id));
+      toast.success('Pedido excluído com sucesso!');
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  };
+
+  const handleStatusChange = async (
+    order: Order,
+    nextStatus: 'pending' | 'contacted' | 'confirmed' | 'completed' | 'cancelled'
+  ) => {
+    let restoreStock: boolean | undefined = undefined;
+    if (nextStatus === 'cancelled' && (order.status === 'confirmed' || order.status === 'completed')) {
+      const proceedCancel = window.confirm(`Cancelar o pedido #${order.orderNumber || order.id}?`);
+      if (!proceedCancel) {
+        return;
+      }
+      restoreStock = window.confirm('Deseja devolver os itens deste pedido para o estoque?');
+    }
+
+    const previousStatus = order.status;
+    setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, status: nextStatus } : o)));
+    try {
+      await updateAdminOrderStatus(storeID, order.id, nextStatus, restoreStock);
+      toast.success('Status atualizado!');
+    } catch (err) {
+      setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, status: previousStatus } : o)));
+      toast.error((err as Error).message);
+    }
+  };
+
+  const clearFilters = async () => {
+    setStatusFilter('');
+    setDateFrom('');
+    setDateTo('');
+    if (!store) return;
+    try {
+      const data = await fetchAdminOrders(store.id);
+      setOrders(data);
+    } catch {
+      setOrders([]);
+      toast.error('Não foi possível carregar pedidos');
+    }
+  };
 
   if (!store) {
     return <div className="p-6">Carregando...</div>;
@@ -140,6 +224,29 @@ export function Orders() {
         <div>
           <h1 className="text-3xl font-bold mb-2">Pedidos</h1>
           <p className="text-neutral-600">Gerencie os pedidos iniciados via WhatsApp</p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-neutral-200 p-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+          >
+            <option value="">Todos os status</option>
+            <option value="pending">Pendente</option>
+            <option value="contacted">Contatado</option>
+            <option value="confirmed">Confirmado</option>
+            <option value="completed">Concluído</option>
+            <option value="cancelled">Cancelado</option>
+          </select>
+          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={clearFilters}>Limpar</Button>
+            <Button className="flex-1" onClick={loadOrders}>Filtrar</Button>
+          </div>
         </div>
       </div>
 
@@ -183,17 +290,40 @@ export function Orders() {
                   <p className="font-semibold">R$ {order.total.toFixed(2)}</p>
                 </TableCell>
                 <TableCell>
-                  <Badge className={statusColors[order.status]}>{statusLabels[order.status]}</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge className={statusColors[order.status]}>{statusLabels[order.status]}</Badge>
+                    <select
+                      value={order.status}
+                      onChange={(e) =>
+                        handleStatusChange(
+                          order,
+                          e.target.value as 'pending' | 'contacted' | 'confirmed' | 'completed' | 'cancelled'
+                        )
+                      }
+                      className="h-8 rounded-md border border-input bg-transparent px-2 text-xs"
+                    >
+                      <option value="pending">Pendente</option>
+                      <option value="contacted">Contatado</option>
+                      <option value="confirmed">Confirmado</option>
+                      <option value="completed">Concluído</option>
+                      <option value="cancelled">Cancelado</option>
+                    </select>
+                  </div>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                    <OrderDetailsDialog order={order} />
-                  </Dialog>
+                  <div className="flex justify-end gap-1">
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <OrderDetailsDialog order={order} />
+                    </Dialog>
+                    <Button variant="ghost" size="icon" className="text-red-600" onClick={() => handleDeleteOrder(order)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

@@ -9,4 +9,3 @@ func errMissing(field string) error {
 func errInvalid(field string) error {
 	return fmt.Errorf("invalid field: %s", field)
 }
-

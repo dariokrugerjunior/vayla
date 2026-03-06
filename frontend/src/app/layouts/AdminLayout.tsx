@@ -1,4 +1,4 @@
-﻿import { Outlet, Link, useLocation } from 'react-router';
+﻿import { Outlet, Link, useLocation, useNavigate } from 'react-router';
 import {
   LayoutDashboard,
   Package,
@@ -15,38 +15,52 @@ import {
 import { Button } from '../components/ui/button';
 import { useStore } from '../contexts/StoreContext';
 import { useState } from 'react';
+import { clearAdminToken } from '../services/api';
+import { StoreNotFound } from '../components/StoreNotFound';
 
 const navigation = [
-  { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-  { name: 'Produtos', href: '/admin/products', icon: Package },
-  { name: 'Categorias', href: '/admin/categories', icon: FolderOpen },
-  { name: 'Pedidos', href: '/admin/orders', icon: ShoppingBag },
-  { name: 'Clientes', href: '/admin/customers', icon: Users },
-  { name: 'Estoque', href: '/admin/inventory', icon: Archive },
-  { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
-  { name: 'Configurações', href: '/admin/settings', icon: Settings },
-  { name: 'WhatsApp', href: '/admin/whatsapp', icon: MessageCircle },
+  { name: 'Dashboard', path: '', icon: LayoutDashboard },
+  { name: 'Produtos', path: '/products', icon: Package },
+  { name: 'Categorias', path: '/categories', icon: FolderOpen },
+  { name: 'Pedidos', path: '/orders', icon: ShoppingBag },
+  { name: 'Clientes', path: '/customers', icon: Users },
+  { name: 'Estoque', path: '/inventory', icon: Archive },
+  { name: 'Analytics', path: '/analytics', icon: BarChart3 },
+  { name: 'Configurações', path: '/settings', icon: Settings },
+  { name: 'WhatsApp', path: '/whatsapp', icon: MessageCircle },
 ];
 
 export function AdminLayout() {
-  const { store } = useStore();
+  const { store, storeID, storeNotFound } = useStore();
   const location = useLocation();
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  if (storeNotFound) {
+    return <StoreNotFound storeID={storeID} />;
+  }
 
   if (!store) {
     return <div className="p-6">Carregando...</div>;
   }
 
+  const baseAdminPath = `/stores/id/${storeID}/admin`;
+  const baseStorePath = `/stores/id/${storeID}`;
+
   const isActive = (href: string) => {
-    if (href === '/admin') {
+    if (href === baseAdminPath) {
       return location.pathname === href;
     }
     return location.pathname.startsWith(href);
   };
 
+  const handleLogout = () => {
+    clearAdminToken(storeID);
+    navigate(`${baseAdminPath}/login`);
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50">
-      {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -54,7 +68,6 @@ export function AdminLayout() {
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={`
           fixed top-0 left-0 z-50 h-screen w-64 bg-white border-r border-neutral-200
@@ -63,7 +76,6 @@ export function AdminLayout() {
         `}
       >
         <div className="flex flex-col h-full">
-          {/* Logo */}
           <div className="flex items-center justify-between h-16 px-6 border-b border-neutral-200">
             <div className="flex items-center gap-3">
               <img
@@ -83,16 +95,16 @@ export function AdminLayout() {
             </Button>
           </div>
 
-          {/* Navigation */}
           <nav className="flex-1 px-4 py-6 overflow-y-auto">
             <div className="space-y-1">
               {navigation.map((item) => {
                 const Icon = item.icon;
-                const active = isActive(item.href);
+                const href = `${baseAdminPath}${item.path}`;
+                const active = isActive(href);
                 return (
                   <Link
                     key={item.name}
-                    to={item.href}
+                    to={href}
                     onClick={() => setSidebarOpen(false)}
                     className={`
                       flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors
@@ -111,21 +123,25 @@ export function AdminLayout() {
             </div>
           </nav>
 
-          {/* Footer */}
           <div className="p-4 border-t border-neutral-200">
             <Link
-              to="/"
+              to={baseStorePath}
               className="flex items-center justify-center gap-2 px-4 py-2 text-sm text-neutral-600 hover:text-neutral-900 rounded-lg hover:bg-neutral-100 transition-colors"
             >
               Ver Loja
             </Link>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="w-full mt-2 px-4 py-2 text-sm text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+            >
+              Sair
+            </button>
           </div>
         </div>
       </aside>
 
-      {/* Main Content */}
       <div className="lg:pl-64">
-        {/* Header */}
         <header className="sticky top-0 z-30 h-16 bg-white border-b border-neutral-200">
           <div className="flex items-center justify-between h-full px-4 lg:px-8">
             <Button
@@ -148,7 +164,6 @@ export function AdminLayout() {
           </div>
         </header>
 
-        {/* Page Content */}
         <main className="p-4 lg:p-8">
           <Outlet />
         </main>

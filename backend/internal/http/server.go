@@ -30,7 +30,7 @@ func NewServer(cfg config.Config, db *sql.DB, rdb *redis.Client) *gin.Engine {
 		c.Next()
 	})
 
-	h := handlers.NewHandlerContainer(db, rdb)
+	h := handlers.NewHandlerContainer(db, rdb, cfg.JWT.Secret)
 
 	router.GET("/health", h.Health)
 
@@ -39,4 +39,3 @@ func NewServer(cfg config.Config, db *sql.DB, rdb *redis.Client) *gin.Engine {
 
 	return router
 }
-

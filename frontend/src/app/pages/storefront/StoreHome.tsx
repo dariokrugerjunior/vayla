@@ -1,30 +1,38 @@
 ﻿import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
 import { motion } from 'motion/react';
 import { SlidersHorizontal } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { ProductCard } from '../../components/storefront/ProductCard';
 import { FilterSheet } from '../../components/storefront/FilterSheet';
 import { useStore } from '../../contexts/StoreContext';
-import { Category, Product } from '../../types';
-import { fetchCategories, fetchProducts } from '../../services/storefront';
+import { Category, Product, StoreBannerSettings } from '../../types';
+import { fetchCategories, fetchProducts, fetchStoreBannerSettings } from '../../services/storefront';
 
 export function StoreHome() {
-  const { store, storeSlug } = useStore();
+  const { store, storeID } = useStore();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [filterOpen, setFilterOpen] = useState(false);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [bannerSettings, setBannerSettings] = useState<StoreBannerSettings | null>(null);
 
   useEffect(() => {
-    if (!storeSlug) return;
-    fetchProducts(storeSlug).then(setProducts).catch(() => setProducts([]));
-    fetchCategories(storeSlug).then(setCategories).catch(() => setCategories([]));
-  }, [storeSlug]);
+    if (!storeID) return;
+    fetchProducts(storeID).then(setProducts).catch(() => setProducts([]));
+    fetchCategories(storeID).then(setCategories).catch(() => setCategories([]));
+    fetchStoreBannerSettings(storeID).then(setBannerSettings).catch(() => setBannerSettings(null));
+  }, [storeID]);
 
   if (!store) {
     return <div className="p-6">Carregando...</div>;
   }
+
+  const selectedCategorySlug = (searchParams.get('category') || '').trim();
+  const selectedCategory = categories.find((c) => c.slug === selectedCategorySlug);
+  const selectedCategoryId = selectedCategory?.id || null;
 
   const featuredProducts = products.filter((p) => p.featured);
   const filteredProducts = products.filter((product) => {
@@ -32,6 +40,20 @@ export function StoreHome() {
     if (product.price < priceRange[0] || product.price > priceRange[1]) return false;
     return true;
   });
+
+  const handleCategoryChange = (categoryId: number | null) => {
+    const baseStorePath = `/stores/id/${storeID}`;
+    if (!categoryId) {
+      navigate(baseStorePath);
+      return;
+    }
+    const category = categories.find((c) => c.id === categoryId);
+    if (!category) {
+      navigate(baseStorePath);
+      return;
+    }
+    navigate(`${baseStorePath}?category=${category.slug}`);
+  };
 
   return (
     <div>
@@ -50,14 +72,30 @@ export function StoreHome() {
               transition={{ duration: 0.6 }}
               className="max-w-xl text-white"
             >
-              <h1 className="text-4xl md:text-6xl font-bold mb-4">
-                Coleção Outono/Inverno 2026
+              <h1
+                className="text-4xl md:text-6xl font-bold mb-4"
+                style={{ color: bannerSettings?.titleColor || '#FFFFFF' }}
+              >
+                {bannerSettings?.title || 'Coleção Outono/Inverno 2026'}
               </h1>
-              <p className="text-lg md:text-xl mb-6 text-white/90">
-                Descubra as últimas tendências em moda com até 30% de desconto
+              <p
+                className="text-lg md:text-xl mb-6"
+                style={{ color: bannerSettings?.subtitleColor || '#F5F5F5' }}
+              >
+                {bannerSettings?.subtitle || 'Descubra as últimas tendências em moda com até 30% de desconto'}
               </p>
-              <Button size="lg" className="rounded-full bg-white text-black hover:bg-white/90">
-                Ver Coleção
+              <Button
+                asChild
+                size="lg"
+                className="rounded-full"
+                style={{
+                  backgroundColor: bannerSettings?.buttonBgColor || '#FFFFFF',
+                  color: bannerSettings?.buttonTextColor || '#111111',
+                }}
+              >
+                <a href={bannerSettings?.buttonUrl || '#'} target={bannerSettings?.buttonUrl?.startsWith('http') ? '_blank' : undefined} rel="noreferrer">
+                  {bannerSettings?.buttonText || 'Ver Coleção'}
+                </a>
               </Button>
             </motion.div>
           </div>
@@ -113,7 +151,7 @@ export function StoreHome() {
         open={filterOpen}
         onOpenChange={setFilterOpen}
         selectedCategoryId={selectedCategoryId}
-        onCategoryChange={setSelectedCategoryId}
+        onCategoryChange={handleCategoryChange}
         priceRange={priceRange}
         onPriceRangeChange={setPriceRange}
         categories={categories}

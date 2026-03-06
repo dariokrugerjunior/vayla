@@ -11,7 +11,7 @@ Crie um `.env` com as variáveis:
 
 ```bash
 VITE_API_URL=http://localhost:8080
-VITE_STORE_SLUG=loja-modelo
+VITE_STORE_ID=1
 ```
 
 ## Como rodar
@@ -31,5 +31,6 @@ Acesse:
 
 ## Observações
 - Este frontend consome a API do backend (Go).
-- Para usar com os seeds, mantenha `VITE_STORE_SLUG=loja-modelo`.
+- Para usar com os seeds, mantenha `VITE_STORE_ID=1`.
+
 

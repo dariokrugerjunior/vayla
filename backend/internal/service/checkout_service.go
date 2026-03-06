@@ -1,4 +1,4 @@
-package service
+﻿package service
 
 import (
 	"context"
@@ -43,12 +43,25 @@ func NewCheckoutService(db *sql.DB, storeRepo *repository.StoreRepository, produ
 	}
 }
 
-func (s *CheckoutService) CheckoutWhatsApp(ctx context.Context, storeSlug string, items []CheckoutItemInput) (CheckoutResult, error) {
+func (s *CheckoutService) CheckoutWhatsApp(ctx context.Context, storeSlug string, items []CheckoutItemInput, customerName string, customerPhone string) (CheckoutResult, error) {
 	store, err := s.storeRepo.GetBySlug(ctx, storeSlug)
 	if err != nil {
 		return CheckoutResult{}, err
 	}
 
+	return s.checkoutWhatsAppWithStore(ctx, store, items, customerName, customerPhone)
+}
+
+func (s *CheckoutService) CheckoutWhatsAppByStoreID(ctx context.Context, storeID int64, items []CheckoutItemInput, customerName string, customerPhone string) (CheckoutResult, error) {
+	store, err := s.storeRepo.GetByID(ctx, storeID)
+	if err != nil {
+		return CheckoutResult{}, err
+	}
+
+	return s.checkoutWhatsAppWithStore(ctx, store, items, customerName, customerPhone)
+}
+
+func (s *CheckoutService) checkoutWhatsAppWithStore(ctx context.Context, store model.Store, items []CheckoutItemInput, customerName string, customerPhone string) (CheckoutResult, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return CheckoutResult{}, err
@@ -92,10 +105,14 @@ func (s *CheckoutService) CheckoutWhatsApp(ctx context.Context, storeSlug string
 
 	message := buildWhatsAppMessage(orderItems)
 	orderNumber := fmt.Sprintf("%s-%d", store.Slug, time.Now().Unix())
+	customerID, err := upsertCustomerByPhone(ctx, tx, store.ID, customerName, customerPhone)
+	if err != nil {
+		return CheckoutResult{}, err
+	}
 
 	order := model.Order{
 		StoreID:         store.ID,
-		CustomerID:      nil,
+		CustomerID:      &customerID,
 		OrderNumber:     orderNumber,
 		Source:          "storefront",
 		Status:          "pending",
@@ -138,6 +155,49 @@ func (s *CheckoutService) CheckoutWhatsApp(ctx context.Context, storeSlug string
 	}, nil
 }
 
+func upsertCustomerByPhone(ctx context.Context, tx *sql.Tx, storeID int64, name string, phone string) (int64, error) {
+	cleanName := strings.TrimSpace(name)
+	if cleanName == "" {
+		return 0, fmt.Errorf("customer_name is required")
+	}
+	cleanPhone := digitsOnly.ReplaceAllString(phone, "")
+	if cleanPhone == "" {
+		return 0, fmt.Errorf("customer_phone is required")
+	}
+
+	var existingID int64
+	err := tx.QueryRowContext(ctx, `
+		SELECT id
+		FROM customers
+		WHERE store_id = $1 AND phone = $2
+		ORDER BY id ASC
+		LIMIT 1
+	`, storeID, cleanPhone).Scan(&existingID)
+	if err == nil {
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE customers
+			SET name = $1, updated_at = NOW()
+			WHERE id = $2
+		`, cleanName, existingID); err != nil {
+			return 0, err
+		}
+		return existingID, nil
+	}
+	if err != sql.ErrNoRows {
+		return 0, err
+	}
+
+	var newID int64
+	if err := tx.QueryRowContext(ctx, `
+		INSERT INTO customers (store_id, name, phone)
+		VALUES ($1, $2, $3)
+		RETURNING id
+	`, storeID, cleanName, cleanPhone).Scan(&newID); err != nil {
+		return 0, err
+	}
+	return newID, nil
+}
+
 func resolvePrice(product model.Product, variant *model.ProductVariant) float64 {
 	if variant != nil && variant.PriceOverride > 0 {
 		return variant.PriceOverride
@@ -164,7 +224,7 @@ func snapshotSize(variant *model.ProductVariant) string {
 
 func buildWhatsAppMessage(items []model.OrderItem) string {
 	var b strings.Builder
-	b.WriteString("Ol�! Quero fazer este pedido:\n\n")
+	b.WriteString("Olá! Quero fazer este pedido:\n\n")
 
 	for i, it := range items {
 		b.WriteString(fmt.Sprintf("%d. %s\n", i+1, it.ProductNameSnapshot))
@@ -197,4 +257,5 @@ func buildWhatsAppURL(number, message string) string {
 	encoded := url.QueryEscape(message)
 	return fmt.Sprintf("https://wa.me/%s?text=%s", clean, encoded)
 }
+
 

@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   api:
-    image: golang:1.22-alpine
+    image: golang:1.23-alpine
     container_name: multi-tennet-api
     working_dir: /app
     volumes:

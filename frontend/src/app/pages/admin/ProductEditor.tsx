@@ -23,7 +23,8 @@ export function ProductEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEditing = !!id;
-  const { store, storeSlug } = useStore();
+  const { store, storeID } = useStore();
+  const baseAdminPath = `/stores/id/${storeID}/admin`;
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [name, setName] = useState('');
@@ -42,7 +43,7 @@ export function ProductEditor() {
   }, [store]);
 
   useEffect(() => {
-    if (!store || !storeSlug || !id) return;
+    if (!store || !id) return;
     const productId = Number(id);
     if (!productId) return;
 
@@ -55,11 +56,11 @@ export function ProductEditor() {
         setCategoryId(String(p.categoryId));
         setStatus(p.status === 'active');
 
-        const fullProduct = await fetchProduct(storeSlug, p.slug);
+        const fullProduct = await fetchProduct(store.id, p.slug);
         setVariations(fullProduct.variations.length ? fullProduct.variations : [{ id: 1, color: '', size: '', stock: 0 }]);
       })
       .catch(() => toast.error('Não foi possível carregar o produto'));
-  }, [store, storeSlug, id]);
+  }, [store, id]);
 
   if (!store) {
     return <div className="p-6">Carregando...</div>;
@@ -114,7 +115,7 @@ export function ProductEditor() {
         await createAdminProduct({ store_id: store.id, ...basePayload });
         toast.success('Produto criado com sucesso!');
       }
-      navigate('/admin/products');
+      navigate(`${baseAdminPath}/products`);
     } catch (err) {
       toast.error((err as Error).message);
     }
@@ -124,7 +125,7 @@ export function ProductEditor() {
     <div className="space-y-6 max-w-4xl">
       <div>
         <button
-          onClick={() => navigate('/admin/products')}
+          onClick={() => navigate(`${baseAdminPath}/products`)}
           className="inline-flex items-center text-neutral-600 hover:text-neutral-900 mb-4"
         >
           <ChevronLeft className="h-4 w-4 mr-1" />
@@ -139,7 +140,6 @@ export function ProductEditor() {
       </div>
 
       <div className="grid gap-6">
-        {/* Basic Information */}
         <Card>
           <CardHeader>
             <CardTitle>Informações Básicas</CardTitle>
@@ -223,7 +223,6 @@ export function ProductEditor() {
           </CardContent>
         </Card>
 
-        {/* Images */}
         <Card>
           <CardHeader>
             <CardTitle>Imagens do Produto</CardTitle>
@@ -242,7 +241,6 @@ export function ProductEditor() {
           </CardContent>
         </Card>
 
-        {/* Variations */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -311,9 +309,8 @@ export function ProductEditor() {
           </CardContent>
         </Card>
 
-        {/* Actions */}
         <div className="flex gap-3 justify-end">
-          <Button variant="outline" onClick={() => navigate('/admin/products')}>
+          <Button variant="outline" onClick={() => navigate(`${baseAdminPath}/products`)}>
             Cancelar
           </Button>
           <Button onClick={handleSave}>

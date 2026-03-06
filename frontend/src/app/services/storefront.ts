@@ -1,8 +1,8 @@
-﻿import { apiGet, apiPost, apiPut, STORE_SLUG } from './api';
-import { Category, Customer, Order, Product, ProductVariation, Store } from '../types';
+﻿import { apiDelete, apiGet, apiPost, apiPut, STORE_ID, getAdminToken } from './api';
+import { Category, Customer, Order, Product, ProductVariation, Store, StoreBannerSettings } from '../types';
 
-export function getStoreSlug() {
-  return STORE_SLUG as string;
+export function getStoreID() {
+  return STORE_ID;
 }
 
 type ApiStore = {
@@ -103,24 +103,42 @@ type ApiCustomer = {
   last_interaction: string;
 };
 
-export async function fetchStoreBySlug(slug = STORE_SLUG): Promise<Store> {
-  const data = await apiGet<ApiStore>(`/stores/${slug}`);
+type ApiBannerSettings = {
+  store_id: number;
+  title: string;
+  subtitle: string;
+  button_text: string;
+  button_url: string;
+  title_color: string;
+  subtitle_color: string;
+  button_bg_color: string;
+  button_text_color: string;
+  is_active: boolean;
+};
+
+export async function fetchStoreByID(storeId = STORE_ID): Promise<Store> {
+  const data = await apiGet<ApiStore>(`/stores/id/${storeId}`);
   return mapStore(data);
 }
 
-export async function fetchCategories(slug = STORE_SLUG): Promise<Category[]> {
-  const data = await apiGet<ApiCategory[]>(`/stores/${slug}/categories`);
+export async function fetchCategories(storeId = STORE_ID): Promise<Category[]> {
+  const data = await apiGet<ApiCategory[]>(`/stores/id/${storeId}/categories`);
   return data.map(mapCategory);
 }
 
-export async function fetchProducts(slug = STORE_SLUG): Promise<Product[]> {
-  const data = await apiGet<ApiProduct[]>(`/stores/${slug}/products`);
+export async function fetchStoreBannerSettings(storeId = STORE_ID): Promise<StoreBannerSettings> {
+  const data = await apiGet<ApiBannerSettings>(`/stores/id/${storeId}/banner-settings`);
+  return mapBannerSettings(data);
+}
+
+export async function fetchProducts(storeId = STORE_ID): Promise<Product[]> {
+  const data = await apiGet<ApiProduct[]>(`/stores/id/${storeId}/products`);
   return data.map((p) => mapProduct(p, []));
 }
 
-export async function fetchProduct(slug: string, productSlug: string): Promise<Product> {
+export async function fetchProduct(storeId: number, productSlug: string): Promise<Product> {
   const data = await apiGet<{ product: ApiProduct; variants: ApiProductVariant[]; images: string[]; category?: { name: string } }>(
-    `/stores/${slug}/products/${productSlug}`
+    `/stores/id/${storeId}/products/${productSlug}`
   );
   const variations = data.variants.map(mapVariation);
   const product = mapProduct({ ...data.product, images: data.images }, variations, {
@@ -130,19 +148,25 @@ export async function fetchProduct(slug: string, productSlug: string): Promise<P
 }
 
 export async function checkoutWhatsApp(payload: {
-  store_slug: string;
+  store_id: number;
+  customer_name: string;
+  customer_phone: string;
   items: { product_id: number; variant_id?: number; quantity: number }[];
 }): Promise<{ order_id: number; whatsapp_message: string; whatsapp_url: string }> {
   return apiPost('/checkout/whatsapp', payload);
 }
 
+export async function adminLogin(storeId: number, email: string, password: string): Promise<{ token: string; user: { id: number; store_id: number; name: string; email: string; role: string } }> {
+  return apiPost(`/stores/id/${storeId}/admin/login`, { email, password });
+}
+
 export async function fetchAdminProducts(storeId: number): Promise<Product[]> {
-  const data = await apiGet<ApiAdminProduct[]>(`/admin/products?store_id=${storeId}`);
+  const data = await apiGet<ApiAdminProduct[]>(`/stores/id/${storeId}/admin/products`, { token: getAdminToken(storeId) });
   return data.map((p) => mapAdminProduct(p));
 }
 
 export async function fetchAdminProduct(storeId: number, id: number): Promise<Product> {
-  const p = await apiGet<ApiAdminProduct>(`/admin/products/${id}?store_id=${storeId}`);
+  const p = await apiGet<ApiAdminProduct>(`/stores/id/${storeId}/admin/products/${id}`, { token: getAdminToken(storeId) });
   return mapAdminProduct(p);
 }
 
@@ -158,7 +182,7 @@ export async function createAdminProduct(payload: {
   is_active: boolean;
   variants: { sku?: string; color: string; size: string; stock: number }[];
 }): Promise<{ id: number }> {
-  return apiPost('/admin/products', payload);
+  return apiPost(`/stores/id/${payload.store_id}/admin/products`, payload, { token: getAdminToken(payload.store_id) });
 }
 
 export async function updateAdminProduct(storeId: number, id: number, payload: {
@@ -172,22 +196,91 @@ export async function updateAdminProduct(storeId: number, id: number, payload: {
   is_active: boolean;
   variants: { sku?: string; color: string; size: string; stock: number }[];
 }): Promise<{ id: number }> {
-  return apiPut(`/admin/products/${id}?store_id=${storeId}`, payload);
+  return apiPut(`/stores/id/${storeId}/admin/products/${id}`, payload, { token: getAdminToken(storeId) });
 }
 
 export async function fetchAdminCategories(storeId: number): Promise<Category[]> {
-  const data = await apiGet<ApiCategory[]>(`/admin/categories?store_id=${storeId}`);
+  const data = await apiGet<ApiCategory[]>(`/stores/id/${storeId}/admin/categories`, { token: getAdminToken(storeId) });
   return data.map(mapCategory);
 }
 
-export async function fetchAdminOrders(storeId: number): Promise<Order[]> {
-  const data = await apiGet<ApiOrder[]>(`/admin/orders?store_id=${storeId}`);
+export async function createAdminCategory(storeId: number, payload: {
+  name: string;
+  slug?: string;
+  description?: string;
+  sort_order?: number;
+  is_active?: boolean;
+}): Promise<Category> {
+  const data = await apiPost<ApiCategory>(`/stores/id/${storeId}/admin/categories`, payload, { token: getAdminToken(storeId) });
+  return mapCategory(data);
+}
+
+
+export async function updateAdminCategory(storeId: number, categoryId: number, payload: {
+  name: string;
+  slug?: string;
+  description?: string;
+  sort_order?: number;
+  is_active?: boolean;
+}): Promise<Category> {
+  const data = await apiPut<ApiCategory>(`/stores/id/${storeId}/admin/categories/${categoryId}`, payload, { token: getAdminToken(storeId) });
+  return mapCategory(data);
+}
+
+export async function deleteAdminCategory(storeId: number, categoryId: number): Promise<{ id: number }> {
+  return apiDelete<{ id: number }>(`/stores/id/${storeId}/admin/categories/${categoryId}`, { token: getAdminToken(storeId) });
+}
+export async function fetchAdminOrders(storeId: number, filters?: {
+  status?: string;
+  date_from?: string;
+  date_to?: string;
+}): Promise<Order[]> {
+  const params = new URLSearchParams();
+  if (filters?.status) params.set('status', filters.status);
+  if (filters?.date_from) params.set('date_from', filters.date_from);
+  if (filters?.date_to) params.set('date_to', filters.date_to);
+  const query = params.toString();
+  const path = `/stores/id/${storeId}/admin/orders${query ? `?${query}` : ''}`;
+  const data = await apiGet<ApiOrder[]>(path, { token: getAdminToken(storeId) });
   return data.map(mapOrder);
 }
 
+export async function deleteAdminOrder(storeId: number, orderId: number): Promise<{ id: number }> {
+  return apiDelete<{ id: number }>(`/stores/id/${storeId}/admin/orders/${orderId}`, { token: getAdminToken(storeId) });
+}
+
+export async function updateAdminOrderStatus(
+  storeId: number,
+  orderId: number,
+  status: 'pending' | 'contacted' | 'confirmed' | 'completed' | 'cancelled',
+  restoreStock?: boolean
+): Promise<{ id: number; status: string }> {
+  return apiPut<{ id: number; status: string }>(
+    `/stores/id/${storeId}/admin/orders/${orderId}/status`,
+    { status, restore_stock: restoreStock },
+    { token: getAdminToken(storeId) }
+  );
+}
+
 export async function fetchAdminCustomers(storeId: number): Promise<Customer[]> {
-  const data = await apiGet<ApiCustomer[]>(`/admin/customers?store_id=${storeId}`);
+  const data = await apiGet<ApiCustomer[]>(`/stores/id/${storeId}/admin/customers`, { token: getAdminToken(storeId) });
   return data.map(mapCustomer);
+}
+
+export async function updateAdminCustomer(
+  storeId: number,
+  customerId: number,
+  payload: { name?: string; phone?: string }
+): Promise<{ id: number; name: string; phone: string }> {
+  return apiPut<{ id: number; name: string; phone: string }>(
+    `/stores/id/${storeId}/admin/customers/${customerId}`,
+    payload,
+    { token: getAdminToken(storeId) }
+  );
+}
+
+export async function deleteAdminCustomer(storeId: number, customerId: number): Promise<{ id: number }> {
+  return apiDelete<{ id: number }>(`/stores/id/${storeId}/admin/customers/${customerId}`, { token: getAdminToken(storeId) });
 }
 
 export async function fetchAdminInventory(storeId: number): Promise<
@@ -203,7 +296,7 @@ export async function fetchAdminInventory(storeId: number): Promise<
     size: string;
     stock_quantity: number;
     cover_image_url: string;
-  }[]>(`/admin/inventory?store_id=${storeId}`);
+  }[]>(`/stores/id/${storeId}/admin/inventory`, { token: getAdminToken(storeId) });
 
   return data.map((row) => ({
     product: {
@@ -233,8 +326,20 @@ export async function fetchAdminInventory(storeId: number): Promise<
   }));
 }
 
+export async function updateAdminInventory(
+  storeId: number,
+  variantId: number,
+  stockQuantity: number
+): Promise<{ variant_id: number; stock_quantity: number }> {
+  return apiPut<{ variant_id: number; stock_quantity: number }>(
+    `/stores/id/${storeId}/admin/inventory/${variantId}`,
+    { stock_quantity: stockQuantity },
+    { token: getAdminToken(storeId) }
+  );
+}
+
 export async function fetchAdminDashboard(storeId: number) {
-  const data = await apiGet<any>(`/admin/dashboard?store_id=${storeId}`);
+  const data = await apiGet<any>(`/stores/id/${storeId}/admin/dashboard`, { token: getAdminToken(storeId) });
   return {
     ...data,
     top_sold_products: (data.top_sold_products || []).map(mapAdminProduct),
@@ -243,7 +348,7 @@ export async function fetchAdminDashboard(storeId: number) {
 }
 
 export async function fetchAdminAnalytics(storeId: number) {
-  const data = await apiGet<any>(`/admin/analytics?store_id=${storeId}`);
+  const data = await apiGet<any>(`/stores/id/${storeId}/admin/analytics`, { token: getAdminToken(storeId) });
   return {
     ...data,
     product_performance: (data.product_performance || []).map(mapAdminProduct),
@@ -251,12 +356,12 @@ export async function fetchAdminAnalytics(storeId: number) {
 }
 
 export async function fetchAdminStore(storeId: number): Promise<Store> {
-  const data = await apiGet<ApiStore>(`/admin/store?store_id=${storeId}`);
+  const data = await apiGet<ApiStore>(`/stores/id/${storeId}/admin/store`, { token: getAdminToken(storeId) });
   return mapStore(data);
 }
 
 export async function updateAdminStore(storeId: number, payload: Partial<Store>): Promise<Store> {
-  const data = await apiPut<ApiStore>(`/admin/store?store_id=${storeId}`, {
+  const data = await apiPut<ApiStore>(`/stores/id/${storeId}/admin/store`, {
     name: payload.name,
     domain: payload.domain,
     subdomain: payload.subdomain,
@@ -264,12 +369,12 @@ export async function updateAdminStore(storeId: number, payload: Partial<Store>)
     logo_url: payload.logoUrl,
     banner_url: payload.bannerUrl,
     whatsapp_number: payload.whatsappNumber,
-  });
+  }, { token: getAdminToken(storeId) });
   return mapStore(data);
 }
 
 export async function fetchWhatsAppSettings(storeId: number) {
-  return apiGet(`/admin/whatsapp-settings?store_id=${storeId}`);
+  return apiGet(`/stores/id/${storeId}/admin/whatsapp-settings`, { token: getAdminToken(storeId) });
 }
 
 export async function updateWhatsAppSettings(storeId: number, payload: {
@@ -279,7 +384,27 @@ export async function updateWhatsAppSettings(storeId: number, payload: {
   single_product_message_template: string;
   is_active?: boolean;
 }) {
-  return apiPut(`/admin/whatsapp-settings?store_id=${storeId}`, payload);
+  return apiPut(`/stores/id/${storeId}/admin/whatsapp-settings`, payload, { token: getAdminToken(storeId) });
+}
+
+export async function fetchAdminBannerSettings(storeId: number): Promise<StoreBannerSettings> {
+  const data = await apiGet<ApiBannerSettings>(`/stores/id/${storeId}/admin/banner-settings`, { token: getAdminToken(storeId) });
+  return mapBannerSettings(data);
+}
+
+export async function updateAdminBannerSettings(storeId: number, payload: {
+  title: string;
+  subtitle: string;
+  button_text: string;
+  button_url: string;
+  title_color: string;
+  subtitle_color: string;
+  button_bg_color: string;
+  button_text_color: string;
+  is_active?: boolean;
+}): Promise<StoreBannerSettings> {
+  const data = await apiPut<ApiBannerSettings>(`/stores/id/${storeId}/admin/banner-settings`, payload, { token: getAdminToken(storeId) });
+  return mapBannerSettings(data);
 }
 
 function mapStore(s: ApiStore): Store {
@@ -415,3 +540,19 @@ function mapCustomer(c: ApiCustomer): Customer {
     totalOrders: c.total_orders,
   };
 }
+
+function mapBannerSettings(b: ApiBannerSettings): StoreBannerSettings {
+  return {
+    storeId: b.store_id,
+    title: b.title || 'Coleção Outono/Inverno 2026',
+    subtitle: b.subtitle || 'Descubra as últimas tendências em moda com até 30% de desconto',
+    buttonText: b.button_text || 'Ver Coleção',
+    buttonUrl: b.button_url || '',
+    titleColor: b.title_color || '#FFFFFF',
+    subtitleColor: b.subtitle_color || '#F5F5F5',
+    buttonBgColor: b.button_bg_color || '#FFFFFF',
+    buttonTextColor: b.button_text_color || '#111111',
+    isActive: b.is_active !== false,
+  };
+}
+

@@ -12,7 +12,7 @@ import { checkoutWhatsApp } from '../../services/storefront';
 
 export function WhatsAppCheckout() {
   const { items, getTotal, clearCart } = useCart();
-  const { store, storeSlug } = useStore();
+  const { store, storeID } = useStore();
   const navigate = useNavigate();
 
   const [customerName, setCustomerName] = useState('');
@@ -22,9 +22,9 @@ export function WhatsAppCheckout() {
 
   useEffect(() => {
     if (items.length === 0) {
-      navigate('/cart');
+      navigate(`/stores/id/${storeID}/cart`);
     }
-  }, [items.length, navigate]);
+  }, [items.length, navigate, storeID]);
 
   if (items.length === 0 || !store) {
     return null;
@@ -42,7 +42,9 @@ export function WhatsAppCheckout() {
 
     try {
       const result = await checkoutWhatsApp({
-        store_slug: storeSlug,
+        store_id: storeID,
+        customer_name: customerName.trim(),
+        customer_phone: customerPhone.trim(),
         items: items.map((item) => ({
           product_id: item.product.id,
           variant_id: item.variation.id,
@@ -54,7 +56,7 @@ export function WhatsAppCheckout() {
 
       setTimeout(() => {
         clearCart();
-        navigate('/');
+        navigate(`/stores/id/${storeID}`);
         toast.success('Pedido enviado! Em breve entraremos em contato.');
       }, 1000);
     } catch (err) {
@@ -80,7 +82,6 @@ export function WhatsAppCheckout() {
           </div>
 
           <div className="bg-white rounded-xl p-6 md:p-8 border border-neutral-200 space-y-8">
-            {/* Customer Information */}
             <div className="space-y-4">
               <h2 className="text-xl font-bold">Suas Informações</h2>
               <div className="space-y-4">
@@ -109,7 +110,6 @@ export function WhatsAppCheckout() {
               </div>
             </div>
 
-            {/* Order Summary */}
             <div className="border-t border-neutral-200 pt-6">
               <h2 className="text-xl font-bold mb-4">Resumo do Pedido</h2>
               <div className="space-y-4">
@@ -142,7 +142,6 @@ export function WhatsAppCheckout() {
               </div>
             </div>
 
-            {/* Total */}
             <div className="border-t border-neutral-200 pt-6">
               <div className="flex justify-between items-baseline mb-6">
                 <span className="text-xl font-semibold">Total</span>
@@ -160,7 +159,6 @@ export function WhatsAppCheckout() {
               </Button>
             </div>
 
-            {/* Info Box */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex gap-3">
                 <CheckCircle2 className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
