@@ -1,8 +1,8 @@
 ﻿BEGIN;
 
-INSERT INTO stores (id, name, slug, description, whatsapp_number, logo_url, banner_url, primary_color, domain, subdomain, is_active)
+INSERT INTO stores (id, name, slug, description, whatsapp_number, service_hours, logo_url, banner_url, primary_color, domain, subdomain, is_active)
 VALUES
-(1, 'Loja Modelo', 'loja-modelo', 'Loja de roupas para demonstração', '5511999999999', NULL, NULL, '#111111', NULL, 'loja-modelo', TRUE);
+(1, 'Loja Modelo', 'loja-modelo', 'Loja de roupas para demonstração', '5511999999999', 'Seg-Sex: 9h às 18h | Sáb: 9h às 13h', NULL, NULL, '#111111', NULL, 'loja-modelo', TRUE);
 
 INSERT INTO users (id, store_id, name, email, password_hash, role, is_active)
 VALUES

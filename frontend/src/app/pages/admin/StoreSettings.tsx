@@ -13,6 +13,7 @@ export function StoreSettings() {
   const [name, setName] = useState('');
   const [domain, setDomain] = useState('');
   const [primaryColor, setPrimaryColor] = useState('#111111');
+  const [serviceHours, setServiceHours] = useState('Seg-Sex: 9h às 18h | Sáb: 9h às 13h');
 
   const [bannerTitle, setBannerTitle] = useState('Coleção Outono/Inverno 2026');
   const [bannerSubtitle, setBannerSubtitle] = useState('Descubra as últimas tendências em moda com até 30% de desconto');
@@ -28,6 +29,7 @@ export function StoreSettings() {
     setName(store.name);
     setDomain(store.domain || store.subdomain || '');
     setPrimaryColor(store.primaryColor);
+    setServiceHours(store.serviceHours || 'Seg-Sex: 9h às 18h | Sáb: 9h às 13h');
   }, [store]);
 
   useEffect(() => {
@@ -53,7 +55,7 @@ export function StoreSettings() {
   }
 
   const handleSave = async () => {
-    await updateStore({ name, domain, primaryColor });
+    await updateStore({ name, domain, primaryColor, serviceHours });
     await updateAdminBannerSettings(storeID, {
       title: bannerTitle,
       subtitle: bannerSubtitle,
@@ -104,6 +106,20 @@ export function StoreSettings() {
             </div>
             <p className="text-sm text-neutral-500 mt-1">
               Seu catálogo estará disponível em: {domain}.catalogo.app
+            </p>
+          </div>
+
+          <div>
+            <Label htmlFor="serviceHours">Horário de Atendimento</Label>
+            <Input
+              id="serviceHours"
+              value={serviceHours}
+              onChange={(e) => setServiceHours(e.target.value)}
+              placeholder="Seg-Sex: 9h às 18h | Sáb: 9h às 13h"
+              className="mt-1.5"
+            />
+            <p className="text-sm text-neutral-500 mt-1">
+              Esse texto aparece no rodapé da loja.
             </p>
           </div>
         </CardContent>

@@ -136,6 +136,7 @@ type AdminStoreResponse struct {
 	Slug         string `json:"slug"`
 	Description  string `json:"description"`
 	WhatsApp     string `json:"whatsapp_number"`
+	ServiceHours string `json:"service_hours"`
 	LogoURL      string `json:"logo_url"`
 	BannerURL    string `json:"banner_url"`
 	PrimaryColor string `json:"primary_color"`
@@ -151,6 +152,7 @@ type AdminUpdateStoreRequest struct {
 	LogoURL      string `json:"logo_url"`
 	BannerURL    string `json:"banner_url"`
 	WhatsApp     string `json:"whatsapp_number"`
+	ServiceHours string `json:"service_hours"`
 }
 
 type AdminWhatsAppSettings struct {
@@ -841,6 +843,12 @@ func (h *HandlerContainer) AdminUpdateOrderStatus(c *gin.Context) {
 	shouldRestore := restoreStock && consumesStock[currentStatus] && status == "cancelled"
 
 	if shouldConsume || shouldRestore {
+		type orderItemStock struct {
+			variantID int64
+			quantity  int
+		}
+		stockItems := make([]orderItemStock, 0, 8)
+
 		rows, err := tx.QueryContext(c.Request.Context(), `
 			SELECT product_variant_id, quantity
 			FROM order_items
@@ -850,8 +858,6 @@ func (h *HandlerContainer) AdminUpdateOrderStatus(c *gin.Context) {
 			JSONError(c, 500, err)
 			return
 		}
-		defer rows.Close()
-
 		for rows.Next() {
 			var variantID *int64
 			var quantity int
@@ -862,7 +868,21 @@ func (h *HandlerContainer) AdminUpdateOrderStatus(c *gin.Context) {
 			if variantID == nil || *variantID <= 0 || quantity <= 0 {
 				continue
 			}
+			stockItems = append(stockItems, orderItemStock{
+				variantID: *variantID,
+				quantity:  quantity,
+			})
+		}
+		if err := rows.Err(); err != nil {
+			JSONError(c, 500, err)
+			return
+		}
+		if err := rows.Close(); err != nil {
+			JSONError(c, 500, err)
+			return
+		}
 
+		for _, item := range stockItems {
 			if shouldConsume {
 				var touchedID int64
 				if err := tx.QueryRowContext(c.Request.Context(), `
@@ -875,9 +895,9 @@ func (h *HandlerContainer) AdminUpdateOrderStatus(c *gin.Context) {
 					  AND p.store_id = $3
 					  AND pv.stock_quantity >= $1
 					RETURNING pv.id
-				`, quantity, *variantID, storeID).Scan(&touchedID); err != nil {
+				`, item.quantity, item.variantID, storeID).Scan(&touchedID); err != nil {
 					if err == sql.ErrNoRows {
-						JSONError(c, 400, fmt.Errorf("insufficient stock for variant %d", *variantID))
+						JSONError(c, 400, fmt.Errorf("insufficient stock for variant %d", item.variantID))
 						return
 					}
 					JSONError(c, 500, err)
@@ -886,7 +906,7 @@ func (h *HandlerContainer) AdminUpdateOrderStatus(c *gin.Context) {
 				if _, err := tx.ExecContext(c.Request.Context(), `
 					INSERT INTO inventory_movements (store_id, product_variant_id, type, quantity, reason, reference_id)
 					VALUES ($1, $2, 'out', $3, 'order_status_confirmed', $4)
-				`, storeID, *variantID, quantity, orderID); err != nil {
+				`, storeID, item.variantID, item.quantity, orderID); err != nil {
 					JSONError(c, 500, err)
 					return
 				}
@@ -901,14 +921,14 @@ func (h *HandlerContainer) AdminUpdateOrderStatus(c *gin.Context) {
 					WHERE pv.id = $2
 					  AND pv.product_id = p.id
 					  AND p.store_id = $3
-				`, quantity, *variantID, storeID); err != nil {
+				`, item.quantity, item.variantID, storeID); err != nil {
 					JSONError(c, 500, err)
 					return
 				}
 				if _, err := tx.ExecContext(c.Request.Context(), `
 					INSERT INTO inventory_movements (store_id, product_variant_id, type, quantity, reason, reference_id)
 					VALUES ($1, $2, 'in', $3, 'order_status_cancelled_restore', $4)
-				`, storeID, *variantID, quantity, orderID); err != nil {
+				`, storeID, item.variantID, item.quantity, orderID); err != nil {
 					JSONError(c, 500, err)
 					return
 				}
@@ -1459,6 +1479,7 @@ func (h *HandlerContainer) AdminGetStore(c *gin.Context) {
 		SELECT id, name, slug,
 			COALESCE(description, '') AS description,
 			whatsapp_number,
+			COALESCE(service_hours, '') AS service_hours,
 			COALESCE(logo_url, '') AS logo_url,
 			COALESCE(banner_url, '') AS banner_url,
 			COALESCE(primary_color, '') AS primary_color,
@@ -1471,7 +1492,7 @@ func (h *HandlerContainer) AdminGetStore(c *gin.Context) {
 
 	var s AdminStoreResponse
 	if err := h.DB.QueryRowContext(c.Request.Context(), query, storeID).Scan(
-		&s.ID, &s.Name, &s.Slug, &s.Description, &s.WhatsApp, &s.LogoURL, &s.BannerURL, &s.PrimaryColor, &s.Domain, &s.Subdomain,
+		&s.ID, &s.Name, &s.Slug, &s.Description, &s.WhatsApp, &s.ServiceHours, &s.LogoURL, &s.BannerURL, &s.PrimaryColor, &s.Domain, &s.Subdomain,
 	); err != nil {
 		if err == sql.ErrNoRows {
 			JSONError(c, 404, fmt.Errorf("store not found"))
@@ -1506,11 +1527,13 @@ func (h *HandlerContainer) AdminUpdateStore(c *gin.Context) {
 			logo_url = $6,
 			banner_url = $7,
 			whatsapp_number = $8,
+			service_hours = $9,
 			updated_at = NOW()
 		WHERE id = $1
 		RETURNING id, name, slug,
 			COALESCE(description, '') AS description,
 			whatsapp_number,
+			COALESCE(service_hours, '') AS service_hours,
 			COALESCE(logo_url, '') AS logo_url,
 			COALESCE(banner_url, '') AS banner_url,
 			COALESCE(primary_color, '') AS primary_color,
@@ -1520,9 +1543,9 @@ func (h *HandlerContainer) AdminUpdateStore(c *gin.Context) {
 
 	var s AdminStoreResponse
 	if err := h.DB.QueryRowContext(c.Request.Context(), query,
-		storeID, req.Name, req.Domain, req.Subdomain, req.PrimaryColor, req.LogoURL, req.BannerURL, req.WhatsApp,
+		storeID, req.Name, req.Domain, req.Subdomain, req.PrimaryColor, req.LogoURL, req.BannerURL, req.WhatsApp, req.ServiceHours,
 	).Scan(
-		&s.ID, &s.Name, &s.Slug, &s.Description, &s.WhatsApp, &s.LogoURL, &s.BannerURL, &s.PrimaryColor, &s.Domain, &s.Subdomain,
+		&s.ID, &s.Name, &s.Slug, &s.Description, &s.WhatsApp, &s.ServiceHours, &s.LogoURL, &s.BannerURL, &s.PrimaryColor, &s.Domain, &s.Subdomain,
 	); err != nil {
 		JSONError(c, 500, err)
 		return

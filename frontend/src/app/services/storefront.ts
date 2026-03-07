@@ -11,6 +11,7 @@ type ApiStore = {
   slug: string;
   description: string;
   whatsapp_number: string;
+  service_hours: string;
   logo_url: string;
   banner_url: string;
   primary_color: string;
@@ -378,6 +379,7 @@ export async function updateAdminStore(storeId: number, payload: Partial<Store>)
     logo_url: payload.logoUrl,
     banner_url: payload.bannerUrl,
     whatsapp_number: payload.whatsappNumber,
+    service_hours: payload.serviceHours,
   }, { token: getAdminToken(storeId) });
   return mapStore(data);
 }
@@ -422,6 +424,7 @@ function mapStore(s: ApiStore): Store {
     name: s.name,
     slug: s.slug,
     description: s.description || '',
+    serviceHours: s.service_hours || '',
     logoUrl: s.logo_url || '',
     bannerUrl: s.banner_url || '',
     primaryColor: s.primary_color || '#111111',

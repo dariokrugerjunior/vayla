@@ -57,6 +57,7 @@ export interface Store {
   name: string;
   slug: string;
   description: string;
+  serviceHours: string;
   logoUrl: string;
   bannerUrl: string;
   primaryColor: string;

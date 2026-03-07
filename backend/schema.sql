@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS stores (
 	slug TEXT NOT NULL UNIQUE,
 	description TEXT,
 	whatsapp_number TEXT NOT NULL,
+	service_hours TEXT NOT NULL DEFAULT 'Seg-Sex: 9h às 18h | Sáb: 9h às 13h',
 	logo_url TEXT,
 	banner_url TEXT,
 	primary_color TEXT,
@@ -19,6 +20,7 @@ CREATE TABLE IF NOT EXISTS stores (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_stores_domain_unique ON stores(domain) WHERE domain IS NOT NULL AND domain <> '';
 CREATE UNIQUE INDEX IF NOT EXISTS idx_stores_subdomain_unique ON stores(subdomain) WHERE subdomain IS NOT NULL AND subdomain <> '';
 CREATE INDEX IF NOT EXISTS idx_stores_created_at ON stores(created_at);
+ALTER TABLE stores ADD COLUMN IF NOT EXISTS service_hours TEXT NOT NULL DEFAULT 'Seg-Sex: 9h às 18h | Sáb: 9h às 13h';
 
 CREATE TABLE IF NOT EXISTS users (
 	id BIGSERIAL PRIMARY KEY,

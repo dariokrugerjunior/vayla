@@ -184,8 +184,7 @@ export function StorefrontLayout() {
               <h3 className="font-semibold mb-4">Atendimento</h3>
               <div className="flex flex-col gap-2 text-sm text-neutral-600">
                 <p>WhatsApp: {store.whatsappNumber}</p>
-                <p>Seg-Sex: 9h às 18h</p>
-                <p>Sáb: 9h às 13h</p>
+                <p>{store.serviceHours || 'Seg-Sex: 9h às 18h | Sáb: 9h às 13h'}</p>
               </div>
             </div>
             <div>

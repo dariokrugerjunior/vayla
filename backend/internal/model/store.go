@@ -8,6 +8,7 @@ type Store struct {
 	Slug          string    `json:"slug"`
 	Description   string    `json:"description"`
 	WhatsApp      string    `json:"whatsapp_number"`
+	ServiceHours  string    `json:"service_hours"`
 	LogoURL       string    `json:"logo_url"`
 	BannerURL     string    `json:"banner_url"`
 	PrimaryColor  string    `json:"primary_color"`

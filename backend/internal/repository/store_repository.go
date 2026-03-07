@@ -21,6 +21,7 @@ func (r *StoreRepository) GetBySlug(ctx context.Context, slug string) (model.Sto
 		SELECT id, name, slug,
 			COALESCE(description, '') AS description,
 			whatsapp_number,
+			COALESCE(service_hours, '') AS service_hours,
 			COALESCE(logo_url, '') AS logo_url,
 			COALESCE(banner_url, '') AS banner_url,
 			COALESCE(primary_color, '') AS primary_color,
@@ -35,7 +36,7 @@ func (r *StoreRepository) GetBySlug(ctx context.Context, slug string) (model.Sto
 	var s model.Store
 	row := r.db.QueryRowContext(ctx, query, slug)
 	if err := row.Scan(
-		&s.ID, &s.Name, &s.Slug, &s.Description, &s.WhatsApp, &s.LogoURL, &s.BannerURL,
+		&s.ID, &s.Name, &s.Slug, &s.Description, &s.WhatsApp, &s.ServiceHours, &s.LogoURL, &s.BannerURL,
 		&s.PrimaryColor, &s.Domain, &s.Subdomain, &s.IsActive, &s.CreatedAt, &s.UpdatedAt,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -52,6 +53,7 @@ func (r *StoreRepository) GetByID(ctx context.Context, storeID int64) (model.Sto
 		SELECT id, name, slug,
 			COALESCE(description, '') AS description,
 			whatsapp_number,
+			COALESCE(service_hours, '') AS service_hours,
 			COALESCE(logo_url, '') AS logo_url,
 			COALESCE(banner_url, '') AS banner_url,
 			COALESCE(primary_color, '') AS primary_color,
@@ -66,7 +68,7 @@ func (r *StoreRepository) GetByID(ctx context.Context, storeID int64) (model.Sto
 	var s model.Store
 	row := r.db.QueryRowContext(ctx, query, storeID)
 	if err := row.Scan(
-		&s.ID, &s.Name, &s.Slug, &s.Description, &s.WhatsApp, &s.LogoURL, &s.BannerURL,
+		&s.ID, &s.Name, &s.Slug, &s.Description, &s.WhatsApp, &s.ServiceHours, &s.LogoURL, &s.BannerURL,
 		&s.PrimaryColor, &s.Domain, &s.Subdomain, &s.IsActive, &s.CreatedAt, &s.UpdatedAt,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

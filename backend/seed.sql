@@ -1,8 +1,8 @@
 ﻿BEGIN;
 
-INSERT INTO stores (id, name, slug, description, whatsapp_number, logo_url, banner_url, primary_color, domain, subdomain, is_active)
+INSERT INTO stores (id, name, slug, description, whatsapp_number, service_hours, logo_url, banner_url, primary_color, domain, subdomain, is_active)
 VALUES
-(1, 'Loja Modelo', 'loja-modelo', 'Loja de roupas para demonstração', '5511999999999', 'https://images.unsplash.com/photo-1662027044921-6febc57a0c53?q=80&w=1162&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', 'https://plus.unsplash.com/premium_photo-1664202525979-80d1da46b34b?q=80&w=1171&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', '#111111', NULL, 'loja-modelo', TRUE);
+(1, 'Loja Modelo', 'loja-modelo', 'Loja de roupas para demonstração', '5511999999999', 'Seg-Sex: 9h às 18h | Sáb: 9h às 13h', 'https://images.unsplash.com/photo-1662027044921-6febc57a0c53?q=80&w=1162&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', 'https://plus.unsplash.com/premium_photo-1664202525979-80d1da46b34b?q=80&w=1171&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', '#111111', NULL, 'loja-modelo', TRUE);
 
 INSERT INTO users (id, store_id, name, email, password_hash, role, is_active)
 VALUES
