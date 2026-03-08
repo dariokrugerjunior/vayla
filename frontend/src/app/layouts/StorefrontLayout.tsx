@@ -53,6 +53,12 @@ export function StorefrontLayout() {
     }).catch(() => {});
   }, [storeID, location.pathname, location.search]);
 
+  useEffect(() => {
+    if (!storeID) return;
+    if (location.pathname === baseStorePath) return;
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [storeID, baseStorePath, location.pathname]);
+
   const cartCount = items.reduce((total, item) => total + item.quantity, 0);
 
   if (storeNotFound) {
