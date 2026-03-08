@@ -117,6 +117,12 @@ type ApiBannerSettings = {
   is_active: boolean;
 };
 
+type ApiStoreWhatsAppSettings = {
+  store_id: number;
+  whatsapp_number: string;
+  is_active: boolean;
+};
+
 export async function fetchStoreByID(storeId = STORE_ID): Promise<Store> {
   const data = await apiGet<ApiStore>(`/stores/id/${storeId}`);
   return mapStore(data);
@@ -130,6 +136,15 @@ export async function fetchCategories(storeId = STORE_ID): Promise<Category[]> {
 export async function fetchStoreBannerSettings(storeId = STORE_ID): Promise<StoreBannerSettings> {
   const data = await apiGet<ApiBannerSettings>(`/stores/id/${storeId}/banner-settings`);
   return mapBannerSettings(data);
+}
+
+export async function fetchStoreWhatsAppSettings(storeId = STORE_ID): Promise<{ storeId: number; whatsappNumber: string; isActive: boolean }> {
+  const data = await apiGet<ApiStoreWhatsAppSettings>(`/stores/id/${storeId}/whatsapp-settings`);
+  return {
+    storeId: data.store_id,
+    whatsappNumber: data.whatsapp_number || '',
+    isActive: data.is_active !== false,
+  };
 }
 
 export async function trackVisit(payload: {

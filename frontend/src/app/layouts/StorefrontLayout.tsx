@@ -8,7 +8,7 @@ import { useStore } from '../contexts/StoreContext';
 import { WhatsAppButton } from '../components/storefront/WhatsAppButton';
 import { Sheet, SheetContent, SheetTrigger } from '../components/ui/sheet';
 import { Category } from '../types';
-import { fetchCategories, trackVisit } from '../services/storefront';
+import { fetchCategories, fetchStoreWhatsAppSettings, trackVisit } from '../services/storefront';
 import { StoreNotFound } from '../components/StoreNotFound';
 
 export function StorefrontLayout() {
@@ -16,6 +16,7 @@ export function StorefrontLayout() {
   const { store, storeID, storeNotFound, isLoading } = useStore();
   const location = useLocation();
   const [categories, setCategories] = useState<Category[]>([]);
+  const [whatsAppNumber, setWhatsAppNumber] = useState('');
   const baseStorePath = `/stores/id/${storeID}`;
 
   useEffect(() => {
@@ -23,6 +24,13 @@ export function StorefrontLayout() {
     fetchCategories(storeID)
       .then(setCategories)
       .catch(() => setCategories([]));
+  }, [storeID]);
+
+  useEffect(() => {
+    if (!storeID) return;
+    fetchStoreWhatsAppSettings(storeID)
+      .then((data) => setWhatsAppNumber(data.isActive ? data.whatsappNumber : ''))
+      .catch(() => setWhatsAppNumber(''));
   }, [storeID]);
 
   useEffect(() => {
@@ -183,7 +191,7 @@ export function StorefrontLayout() {
             <div>
               <h3 className="font-semibold mb-4">Atendimento</h3>
               <div className="flex flex-col gap-2 text-sm text-neutral-600">
-                <p>WhatsApp: {store.whatsappNumber}</p>
+                <p>WhatsApp: {whatsAppNumber || '-'}</p>
                 <p>{store.serviceHours || 'Seg-Sex: 9h às 18h | Sáb: 9h às 13h'}</p>
               </div>
             </div>
@@ -208,7 +216,7 @@ export function StorefrontLayout() {
         </div>
       </footer>
 
-      {location.pathname !== `${baseStorePath}/checkout` && <WhatsAppButton />}
+      {location.pathname !== `${baseStorePath}/checkout` && <WhatsAppButton phoneNumber={whatsAppNumber} />}
     </div>
   );
 }

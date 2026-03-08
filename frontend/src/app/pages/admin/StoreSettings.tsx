@@ -1,12 +1,50 @@
-﻿import { useState, useEffect } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { Upload } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Slider } from '../../components/ui/slider';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { useStore } from '../../contexts/StoreContext';
 import { fetchAdminBannerSettings, updateAdminBannerSettings, uploadAdminImage } from '../../services/storefront';
 import { toast } from 'sonner';
+
+const BANNER_OUTPUT_WIDTH = 1200;
+const BANNER_OUTPUT_HEIGHT = 400;
+
+type BannerCropPlacement = {
+  drawWidth: number;
+  drawHeight: number;
+  x: number;
+  y: number;
+};
+
+function getBannerCropPlacement(image: HTMLImageElement, zoom: number, panX: number, panY: number): BannerCropPlacement {
+  const baseScale = Math.max(BANNER_OUTPUT_WIDTH / image.naturalWidth, BANNER_OUTPUT_HEIGHT / image.naturalHeight);
+  const scaledWidth = image.naturalWidth * baseScale * zoom;
+  const scaledHeight = image.naturalHeight * baseScale * zoom;
+  const centerX = (BANNER_OUTPUT_WIDTH - scaledWidth) / 2;
+  const centerY = (BANNER_OUTPUT_HEIGHT - scaledHeight) / 2;
+  const maxMoveX = Math.max(0, (scaledWidth - BANNER_OUTPUT_WIDTH) / 2);
+  const maxMoveY = Math.max(0, (scaledHeight - BANNER_OUTPUT_HEIGHT) / 2);
+
+  return {
+    drawWidth: scaledWidth,
+    drawHeight: scaledHeight,
+    x: centerX + maxMoveX * panX,
+    y: centerY + maxMoveY * panY,
+  };
+}
+
+function drawBannerPreview(canvas: HTMLCanvasElement, image: HTMLImageElement, zoom: number, panX: number, panY: number) {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  const placement = getBannerCropPlacement(image, zoom, panX, panY);
+  ctx.clearRect(0, 0, BANNER_OUTPUT_WIDTH, BANNER_OUTPUT_HEIGHT);
+  ctx.drawImage(image, placement.x, placement.y, placement.drawWidth, placement.drawHeight);
+}
 
 export function StoreSettings() {
   const { store, storeID, updateStore } = useStore();
@@ -27,6 +65,17 @@ export function StoreSettings() {
   const [bannerSubtitleColor, setBannerSubtitleColor] = useState('#F5F5F5');
   const [bannerButtonBGColor, setBannerButtonBGColor] = useState('#FFFFFF');
   const [bannerButtonTextColor, setBannerButtonTextColor] = useState('#111111');
+
+  const [isBannerCropOpen, setIsBannerCropOpen] = useState(false);
+  const [bannerCropSource, setBannerCropSource] = useState('');
+  const [bannerCropFileName, setBannerCropFileName] = useState('');
+  const [bannerCropFileType, setBannerCropFileType] = useState('image/jpeg');
+  const [bannerCropOriginalFile, setBannerCropOriginalFile] = useState<File | null>(null);
+  const [bannerCropImage, setBannerCropImage] = useState<HTMLImageElement | null>(null);
+  const [bannerCropZoom, setBannerCropZoom] = useState(1);
+  const [bannerCropPanX, setBannerCropPanX] = useState(0);
+  const [bannerCropPanY, setBannerCropPanY] = useState(0);
+  const bannerPreviewCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     if (!store) return;
@@ -55,6 +104,32 @@ export function StoreSettings() {
         // Keep defaults when banner settings do not exist yet
       });
   }, [storeID]);
+
+  useEffect(() => {
+    if (!bannerCropSource) {
+      setBannerCropImage(null);
+      return;
+    }
+
+    const image = new Image();
+    let cancelled = false;
+    image.onload = () => {
+      if (!cancelled) {
+        setBannerCropImage(image);
+      }
+    };
+    image.src = bannerCropSource;
+
+    return () => {
+      cancelled = true;
+      URL.revokeObjectURL(bannerCropSource);
+    };
+  }, [bannerCropSource]);
+
+  useEffect(() => {
+    if (!bannerCropImage || !bannerPreviewCanvasRef.current) return;
+    drawBannerPreview(bannerPreviewCanvasRef.current, bannerCropImage, bannerCropZoom, bannerCropPanX, bannerCropPanY);
+  }, [bannerCropImage, bannerCropPanX, bannerCropPanY, bannerCropZoom]);
 
   if (!store) {
     return <div className="p-6">Carregando...</div>;
@@ -90,18 +165,69 @@ export function StoreSettings() {
     }
   };
 
-  const handleBannerUpload = async (file?: File) => {
-    if (!file || !storeID) return;
+  const uploadBannerFile = async (file: File, successMessage: string) => {
+    if (!storeID) return;
     setIsUploadingBanner(true);
     try {
       const uploaded = await uploadAdminImage(storeID, 'banner', file);
       setBannerUrl(uploaded.url);
-      toast.success('Banner enviado com sucesso!');
+      toast.success(successMessage);
+      setIsBannerCropOpen(false);
+      setBannerCropSource('');
+      setBannerCropOriginalFile(null);
+      setBannerCropImage(null);
+      setBannerCropZoom(1);
+      setBannerCropPanX(0);
+      setBannerCropPanY(0);
     } catch (err) {
       toast.error((err as Error).message || 'Falha no upload do banner');
     } finally {
       setIsUploadingBanner(false);
     }
+  };
+
+  const handleBannerUpload = async (file?: File) => {
+    if (!file || !storeID) return;
+
+    const source = URL.createObjectURL(file);
+    setBannerCropSource(source);
+    setBannerCropFileName(file.name || 'banner');
+    setBannerCropFileType(file.type || 'image/jpeg');
+    setBannerCropOriginalFile(file);
+    setBannerCropZoom(1);
+    setBannerCropPanX(0);
+    setBannerCropPanY(0);
+    setIsBannerCropOpen(true);
+  };
+
+  const handleUploadOriginalBanner = async () => {
+    if (!bannerCropOriginalFile) return;
+    await uploadBannerFile(bannerCropOriginalFile, 'Banner enviado com sucesso!');
+  };
+
+  const handleCropAndUploadBanner = async () => {
+    if (!bannerCropImage) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = BANNER_OUTPUT_WIDTH;
+    canvas.height = BANNER_OUTPUT_HEIGHT;
+    drawBannerPreview(canvas, bannerCropImage, bannerCropZoom, bannerCropPanX, bannerCropPanY);
+
+    const outputType = bannerCropFileType === 'image/png' ? 'image/png' : 'image/jpeg';
+    const extension = outputType === 'image/png' ? 'png' : 'jpg';
+    const baseName = bannerCropFileName.replace(/\.[^.]+$/, '') || 'banner';
+
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, outputType, outputType === 'image/png' ? undefined : 0.92);
+    });
+
+    if (!blob) {
+      toast.error('Falha ao gerar recorte do banner');
+      return;
+    }
+
+    const croppedFile = new File([blob], `${baseName}-recorte.${extension}`, { type: outputType });
+    await uploadBannerFile(croppedFile, 'Banner recortado e enviado com sucesso!');
   };
 
   return (
@@ -209,7 +335,10 @@ export function StoreSettings() {
                   type="file"
                   accept="image/png,image/jpeg,image/webp,image/gif"
                   className="hidden"
-                  onChange={(e) => handleBannerUpload(e.target.files?.[0])}
+                  onChange={(e) => {
+                    handleBannerUpload(e.target.files?.[0]);
+                    e.currentTarget.value = '';
+                  }}
                 />
                 <Button
                   variant="outline"
@@ -220,7 +349,7 @@ export function StoreSettings() {
                   {isUploadingBanner ? 'Enviando...' : 'Fazer Upload'}
                 </Button>
                 <p className="text-sm text-neutral-500 mt-2">
-                  Recomendado: 1200x400px, formato PNG ou JPG
+                  Recomendado: 1200x400px, formato PNG ou JPG (com opção de recorte)
                 </p>
               </div>
             </div>
@@ -315,6 +444,86 @@ export function StoreSettings() {
           Salvar Configurações
         </Button>
       </div>
+
+      <Dialog
+        open={isBannerCropOpen}
+        onOpenChange={(open) => {
+          setIsBannerCropOpen(open);
+          if (!open) {
+            setBannerCropSource('');
+            setBannerCropOriginalFile(null);
+            setBannerCropImage(null);
+            setBannerCropZoom(1);
+            setBannerCropPanX(0);
+            setBannerCropPanY(0);
+          }
+        }}
+      >
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Recortar Banner</DialogTitle>
+            <DialogDescription>
+              Ajuste o enquadramento antes de enviar. Tamanho final: 1200x400.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="w-full rounded-xl border border-neutral-200 overflow-hidden bg-neutral-900">
+              <canvas
+                ref={bannerPreviewCanvasRef}
+                width={BANNER_OUTPUT_WIDTH}
+                height={BANNER_OUTPUT_HEIGHT}
+                className="w-full h-auto block"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <Label>Zoom</Label>
+                <Slider
+                  value={[bannerCropZoom]}
+                  min={1}
+                  max={3}
+                  step={0.01}
+                  onValueChange={(value) => setBannerCropZoom(value[0] || 1)}
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label>Posição Horizontal</Label>
+                <Slider
+                  value={[bannerCropPanX]}
+                  min={-1}
+                  max={1}
+                  step={0.01}
+                  onValueChange={(value) => setBannerCropPanX(value[0] || 0)}
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label>Posição Vertical</Label>
+                <Slider
+                  value={[bannerCropPanY]}
+                  min={-1}
+                  max={1}
+                  step={0.01}
+                  onValueChange={(value) => setBannerCropPanY(value[0] || 0)}
+                  className="mt-2"
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={handleUploadOriginalBanner} disabled={isUploadingBanner || !bannerCropOriginalFile}>
+              Usar Original
+            </Button>
+            <Button onClick={handleCropAndUploadBanner} disabled={isUploadingBanner || !bannerCropImage}>
+              {isUploadingBanner ? 'Enviando...' : 'Aplicar Recorte e Enviar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1682,6 +1682,7 @@ func (h *HandlerContainer) AdminUpdateWhatsAppSettings(c *gin.Context) {
 		JSONError(c, 400, err)
 		return
 	}
+	req.WhatsAppNumber = strings.TrimSpace(req.WhatsAppNumber)
 
 	isActive := true
 	if req.IsActive != nil {
@@ -1707,6 +1708,17 @@ func (h *HandlerContainer) AdminUpdateWhatsAppSettings(c *gin.Context) {
 		storeID, req.WhatsAppNumber, req.DefaultMessageTemplate, req.CartMessageTemplate, req.SingleProductMessageTemplate, isActive,
 	).Scan(
 		&s.ID, &s.StoreID, &s.WhatsAppNumber, &s.DefaultMessageTemplate, &s.CartMessageTemplate, &s.SingleProductMessageTemplate, &s.IsActive,
+	); err != nil {
+		JSONError(c, 500, err)
+		return
+	}
+
+	// Keep stores.whatsapp_number in sync, since storefront "Atendimento" reads from public store data.
+	if _, err := h.DB.ExecContext(
+		c.Request.Context(),
+		`UPDATE stores SET whatsapp_number = $2, updated_at = NOW() WHERE id = $1`,
+		storeID,
+		req.WhatsAppNumber,
 	); err != nil {
 		JSONError(c, 500, err)
 		return

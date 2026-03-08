@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { fetchWhatsAppSettings, updateWhatsAppSettings } from '../../services/storefront';
 
 export function WhatsAppSettings() {
-  const { store } = useStore();
+  const { store, updateStore } = useStore();
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [messageTemplate, setMessageTemplate] = useState('');
   const [copied, setCopied] = useState(false);
@@ -40,6 +40,7 @@ export function WhatsAppSettings() {
       single_product_message_template: messageTemplate,
       is_active: true,
     });
+    await updateStore({ whatsappNumber });
     toast.success('Configurações do WhatsApp salvas!');
   };
 

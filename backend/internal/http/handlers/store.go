@@ -19,6 +19,12 @@ type StoreBannerSettingsResponse struct {
 	IsActive        bool   `json:"is_active"`
 }
 
+type StoreWhatsAppSettingsResponse struct {
+	StoreID        int64  `json:"store_id"`
+	WhatsAppNumber string `json:"whatsapp_number"`
+	IsActive       bool   `json:"is_active"`
+}
+
 func defaultBannerSettings(storeID int64) StoreBannerSettingsResponse {
 	return StoreBannerSettingsResponse{
 		StoreID:         storeID,
@@ -94,4 +100,38 @@ func (h *HandlerContainer) GetStoreBannerSettingsByID(c *gin.Context) {
 	}
 
 	JSONOK(c, banner)
+}
+
+func (h *HandlerContainer) GetStoreWhatsAppSettingsByID(c *gin.Context) {
+	storeID, err := strconv.ParseInt(c.Param("storeID"), 10, 64)
+	if err != nil || storeID <= 0 {
+		JSONError(c, 400, errInvalid("storeID"))
+		return
+	}
+
+	if _, err := h.StoreRepo.GetByID(c.Request.Context(), storeID); err != nil {
+		JSONError(c, 404, err)
+		return
+	}
+
+	const query = `
+		SELECT store_id, COALESCE(whatsapp_number, '') AS whatsapp_number, is_active
+		FROM whatsapp_settings
+		WHERE store_id = $1
+		LIMIT 1
+	`
+
+	var settings StoreWhatsAppSettingsResponse
+	if err := h.DB.QueryRowContext(c.Request.Context(), query, storeID).Scan(
+		&settings.StoreID, &settings.WhatsAppNumber, &settings.IsActive,
+	); err != nil {
+		if err == sql.ErrNoRows {
+			JSONOK(c, StoreWhatsAppSettingsResponse{StoreID: storeID, IsActive: true})
+			return
+		}
+		JSONError(c, 500, err)
+		return
+	}
+
+	JSONOK(c, settings)
 }
