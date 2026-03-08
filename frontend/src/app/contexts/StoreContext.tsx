@@ -1,11 +1,12 @@
 ﻿import React, { createContext, useContext, ReactNode, useEffect, useMemo, useState } from 'react';
 import { Store } from '../types';
-import { fetchStoreByID, getStoreID, updateAdminStore } from '../services/storefront';
+import { fetchStoreByID, fetchStoreBySlug, getDefaultStoreSlug, getStoreID, updateAdminStore } from '../services/storefront';
 import { APIError } from '../services/api';
 
 interface StoreContextType {
   store: Store | null;
   storeID: number;
+  storeSlug: string;
   storeNotFound: boolean;
   isLoading: boolean;
   error: string | null;
@@ -13,28 +14,38 @@ interface StoreContextType {
   updateStore: (store: Partial<Store>) => Promise<void>;
 }
 
+type StoreLocator =
+  | { mode: 'id'; storeID: number; storeSlug: '' }
+  | { mode: 'slug'; storeID: 0; storeSlug: string };
+
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
-function resolveStoreIDFromPath(): number {
+function resolveStoreLocatorFromPath(): StoreLocator {
   if (typeof window === 'undefined') {
-    return getStoreID();
+    return { mode: 'id', storeID: getStoreID(), storeSlug: '' };
   }
 
-  const match = window.location.pathname.match(/\/stores\/id\/(\d+)/);
-  if (!match) {
-    return getStoreID();
+  const idMatch = window.location.pathname.match(/\/stores\/id\/(\d+)/);
+  if (idMatch) {
+    const parsed = Number(idMatch[1]);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return { mode: 'id', storeID: parsed, storeSlug: '' };
+    }
   }
 
-  const parsed = Number(match[1]);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return getStoreID();
+  const slugMatch = window.location.pathname.match(/^\/([^/?#]+)/);
+  if (slugMatch) {
+    const candidate = decodeURIComponent(slugMatch[1] || '').trim();
+    if (candidate && candidate !== 'stores' && candidate !== 'admin') {
+      return { mode: 'slug', storeID: 0, storeSlug: candidate };
+    }
   }
 
-  return parsed;
+  return { mode: 'slug', storeID: 0, storeSlug: getDefaultStoreSlug() };
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [storeID, setStoreID] = useState<number>(() => resolveStoreIDFromPath());
+  const [locator, setLocator] = useState<StoreLocator>(() => resolveStoreLocatorFromPath());
   const [store, setStore] = useState<Store | null>(null);
   const [storeNotFound, setStoreNotFound] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,7 +53,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const updateFromPath = () => {
-      setStoreID(resolveStoreIDFromPath());
+      setLocator(resolveStoreLocatorFromPath());
     };
 
     const notify = () => window.dispatchEvent(new Event('locationchange'));
@@ -78,7 +89,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setError(null);
     setStoreNotFound(false);
     try {
-      const data = await fetchStoreByID(storeID);
+      const data =
+        locator.mode === 'id'
+          ? await fetchStoreByID(locator.storeID)
+          : await fetchStoreBySlug(locator.storeSlug);
       setStore(data);
     } catch (err) {
       setStore(null);
@@ -93,7 +107,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     loadStore();
-  }, [storeID]);
+  }, [locator.mode, locator.storeID, locator.storeSlug]);
 
   const updateStore = async (updates: Partial<Store>) => {
     if (!store) return;
@@ -101,9 +115,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setStore(updated);
   };
 
+  const storeID = store?.id || (locator.mode === 'id' ? locator.storeID : 0);
+  const storeSlug = store?.slug || (locator.mode === 'slug' ? locator.storeSlug : '');
+
   const value = useMemo(
-    () => ({ store, storeID, storeNotFound, isLoading, error, refreshStore: loadStore, updateStore }),
-    [store, storeID, storeNotFound, isLoading, error]
+    () => ({ store, storeID, storeSlug, storeNotFound, isLoading, error, refreshStore: loadStore, updateStore }),
+    [store, storeID, storeSlug, storeNotFound, isLoading, error]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

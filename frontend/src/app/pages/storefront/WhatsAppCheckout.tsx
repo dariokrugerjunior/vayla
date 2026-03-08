@@ -12,7 +12,7 @@ import { checkoutWhatsApp } from '../../services/storefront';
 
 export function WhatsAppCheckout() {
   const { items, getTotal, clearCart } = useCart();
-  const { store, storeID } = useStore();
+  const { store, storeID, storeSlug } = useStore();
   const navigate = useNavigate();
 
   const [customerName, setCustomerName] = useState('');
@@ -21,10 +21,11 @@ export function WhatsAppCheckout() {
   const total = getTotal();
 
   useEffect(() => {
+    if (!storeSlug) return;
     if (items.length === 0) {
-      navigate(`/stores/id/${storeID}/cart`);
+      navigate(`/${storeSlug}/cart`);
     }
-  }, [items.length, navigate, storeID]);
+  }, [items.length, navigate, storeSlug]);
 
   if (items.length === 0 || !store) {
     return null;
@@ -56,7 +57,7 @@ export function WhatsAppCheckout() {
 
       setTimeout(() => {
         clearCart();
-        navigate(`/stores/id/${storeID}`);
+        navigate(`/${storeSlug}`);
         toast.success('Pedido enviado! Em breve entraremos em contato.');
       }, 1000);
     } catch (err) {

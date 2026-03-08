@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"github.com/gin-gonic/gin"
 	"strconv"
+	"strings"
 )
 
 type StoreBannerSettingsResponse struct {
@@ -43,6 +44,22 @@ func defaultBannerSettings(storeID int64) StoreBannerSettingsResponse {
 func (h *HandlerContainer) GetStore(c *gin.Context) {
 	slug := c.Param("slug")
 	store, err := h.StoreRepo.GetBySlug(c.Request.Context(), slug)
+	if err != nil {
+		JSONError(c, 404, err)
+		return
+	}
+
+	JSONOK(c, store)
+}
+
+func (h *HandlerContainer) ResolveStoreByDomain(c *gin.Context) {
+	host := strings.TrimSpace(c.Query("host"))
+	if host == "" {
+		JSONError(c, 400, errMissing("host"))
+		return
+	}
+
+	store, err := h.StoreRepo.GetByDomain(c.Request.Context(), host)
 	if err != nil {
 		JSONError(c, 404, err)
 		return
@@ -102,6 +119,37 @@ func (h *HandlerContainer) GetStoreBannerSettingsByID(c *gin.Context) {
 	JSONOK(c, banner)
 }
 
+func (h *HandlerContainer) GetStoreBannerSettings(c *gin.Context) {
+	slug := c.Param("slug")
+	store, err := h.StoreRepo.GetBySlug(c.Request.Context(), slug)
+	if err != nil {
+		JSONError(c, 404, err)
+		return
+	}
+
+	const query = `
+		SELECT store_id, title, subtitle, button_text, button_url, title_color, subtitle_color, button_bg_color, button_text_color, is_active
+		FROM store_banners
+		WHERE store_id = $1
+		LIMIT 1
+	`
+
+	var banner StoreBannerSettingsResponse
+	if err := h.DB.QueryRowContext(c.Request.Context(), query, store.ID).Scan(
+		&banner.StoreID, &banner.Title, &banner.Subtitle, &banner.ButtonText, &banner.ButtonURL,
+		&banner.TitleColor, &banner.SubtitleColor, &banner.ButtonBGColor, &banner.ButtonTextColor, &banner.IsActive,
+	); err != nil {
+		if err == sql.ErrNoRows {
+			JSONOK(c, defaultBannerSettings(store.ID))
+			return
+		}
+		JSONError(c, 500, err)
+		return
+	}
+
+	JSONOK(c, banner)
+}
+
 func (h *HandlerContainer) GetStoreWhatsAppSettingsByID(c *gin.Context) {
 	storeID, err := strconv.ParseInt(c.Param("storeID"), 10, 64)
 	if err != nil || storeID <= 0 {
@@ -127,6 +175,36 @@ func (h *HandlerContainer) GetStoreWhatsAppSettingsByID(c *gin.Context) {
 	); err != nil {
 		if err == sql.ErrNoRows {
 			JSONOK(c, StoreWhatsAppSettingsResponse{StoreID: storeID, IsActive: true})
+			return
+		}
+		JSONError(c, 500, err)
+		return
+	}
+
+	JSONOK(c, settings)
+}
+
+func (h *HandlerContainer) GetStoreWhatsAppSettings(c *gin.Context) {
+	slug := c.Param("slug")
+	store, err := h.StoreRepo.GetBySlug(c.Request.Context(), slug)
+	if err != nil {
+		JSONError(c, 404, err)
+		return
+	}
+
+	const query = `
+		SELECT store_id, COALESCE(whatsapp_number, '') AS whatsapp_number, is_active
+		FROM whatsapp_settings
+		WHERE store_id = $1
+		LIMIT 1
+	`
+
+	var settings StoreWhatsAppSettingsResponse
+	if err := h.DB.QueryRowContext(c.Request.Context(), query, store.ID).Scan(
+		&settings.StoreID, &settings.WhatsAppNumber, &settings.IsActive,
+	); err != nil {
+		if err == sql.ErrNoRows {
+			JSONOK(c, StoreWhatsAppSettingsResponse{StoreID: store.ID, IsActive: true})
 			return
 		}
 		JSONError(c, 500, err)

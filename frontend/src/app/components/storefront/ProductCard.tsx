@@ -8,14 +8,14 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product }: ProductCardProps) {
-  const { storeID } = useStore();
+  const { storeSlug } = useStore();
   const price = product.discountPrice || product.price;
   const hasDiscount = product.discountPrice > 0;
   const image = product.images[0] || 'https://placehold.co/600x600?text=Produto';
   const slug = product.slug || String(product.id);
 
   return (
-    <Link to={`/stores/id/${storeID}/product/${slug}`}>
+    <Link to={`/${storeSlug}/product/${slug}`}>
       <div className="group cursor-pointer">
         <div className="aspect-square bg-neutral-100 rounded-xl overflow-hidden mb-3 relative">
           <img

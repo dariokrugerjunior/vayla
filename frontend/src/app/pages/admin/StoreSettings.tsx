@@ -49,7 +49,7 @@ function drawBannerPreview(canvas: HTMLCanvasElement, image: HTMLImageElement, z
 export function StoreSettings() {
   const { store, storeID, updateStore } = useStore();
   const [name, setName] = useState('');
-  const [domain, setDomain] = useState('');
+  const [slug, setSlug] = useState('');
   const [primaryColor, setPrimaryColor] = useState('#111111');
   const [serviceHours, setServiceHours] = useState('Seg-Sex: 9h às 18h | Sáb: 9h às 13h');
   const [logoUrl, setLogoUrl] = useState('');
@@ -80,7 +80,7 @@ export function StoreSettings() {
   useEffect(() => {
     if (!store) return;
     setName(store.name);
-    setDomain(store.domain || store.subdomain || '');
+    setSlug(store.slug || '');
     setPrimaryColor(store.primaryColor);
     setServiceHours(store.serviceHours || 'Seg-Sex: 9h às 18h | Sáb: 9h às 13h');
     setLogoUrl(store.logoUrl || '');
@@ -136,7 +136,7 @@ export function StoreSettings() {
   }
 
   const handleSave = async () => {
-    await updateStore({ name, domain, primaryColor, serviceHours, logoUrl, bannerUrl });
+    await updateStore({ name, slug, primaryColor, serviceHours, logoUrl, bannerUrl });
     await updateAdminBannerSettings(storeID, {
       title: bannerTitle,
       subtitle: bannerSubtitle,
@@ -253,19 +253,16 @@ export function StoreSettings() {
           </div>
 
           <div>
-            <Label htmlFor="domain">Domínio / Subdomínio</Label>
-            <div className="flex gap-2 mt-1.5">
-              <Input
-                id="domain"
-                value={domain}
-                onChange={(e) => setDomain(e.target.value)}
-              />
-              <span className="flex items-center px-3 bg-neutral-100 rounded-lg text-sm text-neutral-600">
-                .catalogo.app
-              </span>
-            </div>
+            <Label htmlFor="slug">Slug da Loja</Label>
+            <Input
+              id="slug"
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              className="mt-1.5"
+              placeholder="minha-loja"
+            />
             <p className="text-sm text-neutral-500 mt-1">
-              Seu catálogo estará disponível em: {domain}.catalogo.app
+              URL pública: /{slug || 'minha-loja'}
             </p>
           </div>
 

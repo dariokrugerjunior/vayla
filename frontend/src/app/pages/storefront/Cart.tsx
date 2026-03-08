@@ -7,11 +7,11 @@ import { motion } from 'motion/react';
 
 export function Cart() {
   const { items, updateQuantity, removeFromCart, getTotal } = useCart();
-  const { storeID } = useStore();
+  const { storeSlug } = useStore();
   const navigate = useNavigate();
 
   const total = getTotal();
-  const baseStorePath = `/stores/id/${storeID}`;
+  const baseStorePath = `/${storeSlug}`;
 
   if (items.length === 0) {
     return (

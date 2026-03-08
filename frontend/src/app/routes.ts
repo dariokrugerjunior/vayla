@@ -1,5 +1,6 @@
 ﻿import { createBrowserRouter, redirect } from "react-router";
 import { STORE_ID, hasAdminToken } from "./services/api";
+import { fetchStoreByDomain, fetchStoreByID, getDefaultStoreSlug } from "./services/storefront";
 import { StorefrontLayout } from "./layouts/StorefrontLayout";
 import { AdminLayout } from "./layouts/AdminLayout";
 import { StoreHome } from "./pages/storefront/StoreHome";
@@ -18,12 +19,13 @@ import { StoreSettings } from "./pages/admin/StoreSettings";
 import { WhatsAppSettings } from "./pages/admin/WhatsAppSettings";
 import { AdminLogin } from "./pages/admin/AdminLogin";
 
-const storeBasePath = `/stores/id/${STORE_ID}`;
+const defaultStoreSlug = getDefaultStoreSlug();
+const adminBasePath = `/stores/id/${STORE_ID}/admin`;
 
 function requireAdminAuth(storeIDParam: string | undefined) {
   const sid = Number(storeIDParam || 0);
   if (!sid) {
-    return redirect(storeBasePath);
+    return redirect(`/${defaultStoreSlug}`);
   }
   if (!hasAdminToken(sid)) {
     return redirect(`/stores/id/${sid}/admin/login`);
@@ -32,10 +34,39 @@ function requireAdminAuth(storeIDParam: string | undefined) {
 }
 
 export const router = createBrowserRouter([
-  { path: "/", loader: () => redirect(storeBasePath) },
-  { path: "/admin", loader: () => redirect(`${storeBasePath}/admin`) },
   {
-    path: "/stores/id/:storeID",
+    path: "/",
+    loader: async () => {
+      if (typeof window !== "undefined") {
+        try {
+          const store = await fetchStoreByDomain(window.location.hostname);
+          if (store.slug) {
+            return redirect(`/${store.slug}`);
+          }
+        } catch {
+          // fallback below
+        }
+      }
+      return redirect(`/${defaultStoreSlug}`);
+    },
+  },
+  { path: "/admin", loader: () => redirect(adminBasePath) },
+  {
+    path: "/stores/id/:storeID/*",
+    loader: async ({ params }) => {
+      const sid = Number(params.storeID || 0);
+      if (!sid) return redirect(`/${defaultStoreSlug}`);
+      const suffix = (params["*"] || "").replace(/^\/+/, "");
+      try {
+        const store = await fetchStoreByID(sid);
+        return redirect(suffix ? `/${store.slug}/${suffix}` : `/${store.slug}`);
+      } catch {
+        return redirect(`/${defaultStoreSlug}`);
+      }
+    },
+  },
+  {
+    path: "/:storeSlug",
     Component: StorefrontLayout,
     children: [
       { index: true, Component: StoreHome },

@@ -10,7 +10,7 @@ import { Category, Product, StoreBannerSettings } from '../../types';
 import { fetchCategories, fetchProducts, fetchStoreBannerSettings } from '../../services/storefront';
 
 export function StoreHome() {
-  const { store, storeID } = useStore();
+  const { store, storeSlug } = useStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [filterOpen, setFilterOpen] = useState(false);
@@ -20,11 +20,11 @@ export function StoreHome() {
   const [bannerSettings, setBannerSettings] = useState<StoreBannerSettings | null>(null);
 
   useEffect(() => {
-    if (!storeID) return;
-    fetchProducts(storeID).then(setProducts).catch(() => setProducts([]));
-    fetchCategories(storeID).then(setCategories).catch(() => setCategories([]));
-    fetchStoreBannerSettings(storeID).then(setBannerSettings).catch(() => setBannerSettings(null));
-  }, [storeID]);
+    if (!storeSlug) return;
+    fetchProducts(storeSlug).then(setProducts).catch(() => setProducts([]));
+    fetchCategories(storeSlug).then(setCategories).catch(() => setCategories([]));
+    fetchStoreBannerSettings(storeSlug).then(setBannerSettings).catch(() => setBannerSettings(null));
+  }, [storeSlug]);
 
   if (!store) {
     return <div className="p-6">Carregando...</div>;
@@ -42,7 +42,7 @@ export function StoreHome() {
   });
 
   const handleCategoryChange = (categoryId: number | null) => {
-    const baseStorePath = `/stores/id/${storeID}`;
+    const baseStorePath = `/${storeSlug}`;
     if (!categoryId) {
       navigate(baseStorePath);
       return;

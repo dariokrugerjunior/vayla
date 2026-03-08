@@ -5,6 +5,10 @@ export function getStoreID() {
   return STORE_ID;
 }
 
+export function getDefaultStoreSlug() {
+  return String(import.meta.env.VITE_STORE_SLUG || 'loja-modelo').trim();
+}
+
 type ApiStore = {
   id: number;
   name: string;
@@ -128,18 +132,40 @@ export async function fetchStoreByID(storeId = STORE_ID): Promise<Store> {
   return mapStore(data);
 }
 
-export async function fetchCategories(storeId = STORE_ID): Promise<Category[]> {
-  const data = await apiGet<ApiCategory[]>(`/stores/id/${storeId}/categories`);
+export async function fetchStoreBySlug(storeSlug = getDefaultStoreSlug()): Promise<Store> {
+  const data = await apiGet<ApiStore>(`/stores/${storeSlug}`);
+  return mapStore(data);
+}
+
+export async function fetchStoreByDomain(host: string): Promise<Store> {
+  const data = await apiGet<ApiStore>(`/stores/resolve-domain?host=${encodeURIComponent(host)}`);
+  return mapStore(data);
+}
+
+export async function fetchCategories(storeRef: string | number = getDefaultStoreSlug()): Promise<Category[]> {
+  const path =
+    typeof storeRef === 'number'
+      ? `/stores/id/${storeRef}/categories`
+      : `/stores/${storeRef}/categories`;
+  const data = await apiGet<ApiCategory[]>(path);
   return data.map(mapCategory);
 }
 
-export async function fetchStoreBannerSettings(storeId = STORE_ID): Promise<StoreBannerSettings> {
-  const data = await apiGet<ApiBannerSettings>(`/stores/id/${storeId}/banner-settings`);
+export async function fetchStoreBannerSettings(storeRef: string | number = getDefaultStoreSlug()): Promise<StoreBannerSettings> {
+  const path =
+    typeof storeRef === 'number'
+      ? `/stores/id/${storeRef}/banner-settings`
+      : `/stores/${storeRef}/banner-settings`;
+  const data = await apiGet<ApiBannerSettings>(path);
   return mapBannerSettings(data);
 }
 
-export async function fetchStoreWhatsAppSettings(storeId = STORE_ID): Promise<{ storeId: number; whatsappNumber: string; isActive: boolean }> {
-  const data = await apiGet<ApiStoreWhatsAppSettings>(`/stores/id/${storeId}/whatsapp-settings`);
+export async function fetchStoreWhatsAppSettings(storeRef: string | number = getDefaultStoreSlug()): Promise<{ storeId: number; whatsappNumber: string; isActive: boolean }> {
+  const path =
+    typeof storeRef === 'number'
+      ? `/stores/id/${storeRef}/whatsapp-settings`
+      : `/stores/${storeRef}/whatsapp-settings`;
+  const data = await apiGet<ApiStoreWhatsAppSettings>(path);
   return {
     storeId: data.store_id,
     whatsappNumber: data.whatsapp_number || '',
@@ -156,14 +182,22 @@ export async function trackVisit(payload: {
   return apiPost('/tracking/visit', payload);
 }
 
-export async function fetchProducts(storeId = STORE_ID): Promise<Product[]> {
-  const data = await apiGet<ApiProduct[]>(`/stores/id/${storeId}/products`);
+export async function fetchProducts(storeRef: string | number = getDefaultStoreSlug()): Promise<Product[]> {
+  const path =
+    typeof storeRef === 'number'
+      ? `/stores/id/${storeRef}/products`
+      : `/stores/${storeRef}/products`;
+  const data = await apiGet<ApiProduct[]>(path);
   return data.map((p) => mapProduct(p, []));
 }
 
-export async function fetchProduct(storeId: number, productSlug: string): Promise<Product> {
+export async function fetchProduct(storeRef: string | number, productSlug: string): Promise<Product> {
+  const path =
+    typeof storeRef === 'number'
+      ? `/stores/id/${storeRef}/products/${productSlug}`
+      : `/stores/${storeRef}/products/${productSlug}`;
   const data = await apiGet<{ product: ApiProduct; variants: ApiProductVariant[]; images: string[]; category?: { name: string } }>(
-    `/stores/id/${storeId}/products/${productSlug}`
+    path
   );
   const variations = data.variants.map(mapVariation);
   const product = mapProduct({ ...data.product, images: data.images }, variations, {
@@ -408,8 +442,7 @@ export async function fetchAdminStore(storeId: number): Promise<Store> {
 export async function updateAdminStore(storeId: number, payload: Partial<Store>): Promise<Store> {
   const data = await apiPut<ApiStore>(`/stores/id/${storeId}/admin/store`, {
     name: payload.name,
-    domain: payload.domain,
-    subdomain: payload.subdomain,
+    slug: payload.slug,
     primary_color: payload.primaryColor,
     logo_url: payload.logoUrl,
     banner_url: payload.bannerUrl,

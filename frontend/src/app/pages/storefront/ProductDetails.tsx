@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 export function ProductDetails() {
   const { slug } = useParams();
   const { addToCart } = useCart();
-  const { store, storeID } = useStore();
+  const { store, storeSlug } = useStore();
   const navigate = useNavigate();
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
@@ -24,12 +24,12 @@ export function ProductDetails() {
   const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
-    if (!slug || !storeID) return;
-    fetchProduct(storeID, slug)
+    if (!slug || !storeSlug) return;
+    fetchProduct(storeSlug, slug)
       .then(async (p) => {
         setProduct(p);
         try {
-          const list = await fetchProducts(storeID);
+          const list = await fetchProducts(storeSlug);
           const related = list.filter((item) => item.categoryId === p.categoryId && item.id !== p.id);
           setRelatedProducts(related.slice(0, 4));
         } catch {
@@ -37,13 +37,13 @@ export function ProductDetails() {
         }
       })
       .catch(() => setProduct(null));
-  }, [slug, storeID]);
+  }, [slug, storeSlug]);
 
   if (!product || !store) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <h2 className="text-2xl font-bold mb-4">Produto não encontrado</h2>
-        <Link to={`/stores/id/${storeID}`}>
+        <Link to={`/${storeSlug}`}>
           <Button>Voltar para a loja</Button>
         </Link>
       </div>
@@ -67,7 +67,7 @@ export function ProductDetails() {
   const handleBuyWhatsApp = async () => {
     if (!selectedVariation) return;
     addToCart(product, selectedVariation, quantity);
-    navigate(`/stores/id/${storeID}/checkout`);
+    navigate(`/${storeSlug}/checkout`);
   };
 
   const price = product.discountPrice || product.price;
@@ -77,7 +77,7 @@ export function ProductDetails() {
     <div>
       {/* Back Button */}
       <div className="container mx-auto px-4 py-4">
-        <Link to={`/stores/id/${storeID}`} className="inline-flex items-center text-neutral-600 hover:text-neutral-900">
+        <Link to={`/${storeSlug}`} className="inline-flex items-center text-neutral-600 hover:text-neutral-900">
           <ChevronLeft className="h-4 w-4 mr-1" />
           Voltar
         </Link>

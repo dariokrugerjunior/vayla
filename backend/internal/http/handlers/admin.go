@@ -148,8 +148,7 @@ type AdminStoreResponse struct {
 
 type AdminUpdateStoreRequest struct {
 	Name         string `json:"name"`
-	Domain       string `json:"domain"`
-	Subdomain    string `json:"subdomain"`
+	Slug         string `json:"slug"`
 	PrimaryColor string `json:"primary_color"`
 	LogoURL      string `json:"logo_url"`
 	BannerURL    string `json:"banner_url"`
@@ -1574,6 +1573,15 @@ func (h *HandlerContainer) AdminUpdateStore(c *gin.Context) {
 		JSONError(c, 400, err)
 		return
 	}
+	req.Name = strings.TrimSpace(req.Name)
+	req.Slug = strings.TrimSpace(req.Slug)
+	if req.Slug == "" {
+		req.Slug = util.Slugify(req.Name)
+	}
+	if req.Slug == "" {
+		JSONError(c, 400, errInvalid("slug"))
+		return
+	}
 
 	var oldLogoURL, oldBannerURL string
 	_ = h.DB.QueryRowContext(c.Request.Context(),
@@ -1584,13 +1592,12 @@ func (h *HandlerContainer) AdminUpdateStore(c *gin.Context) {
 	const query = `
 		UPDATE stores
 		SET name = $2,
-			domain = $3,
-			subdomain = $4,
-			primary_color = $5,
-			logo_url = $6,
-			banner_url = $7,
-			whatsapp_number = $8,
-			service_hours = $9,
+			slug = $3,
+			primary_color = $4,
+			logo_url = $5,
+			banner_url = $6,
+			whatsapp_number = $7,
+			service_hours = $8,
 			updated_at = NOW()
 		WHERE id = $1
 		RETURNING id, name, slug,
@@ -1606,10 +1613,15 @@ func (h *HandlerContainer) AdminUpdateStore(c *gin.Context) {
 
 	var s AdminStoreResponse
 	if err := h.DB.QueryRowContext(c.Request.Context(), query,
-		storeID, req.Name, req.Domain, req.Subdomain, req.PrimaryColor, req.LogoURL, req.BannerURL, req.WhatsApp, req.ServiceHours,
+		storeID, req.Name, req.Slug, req.PrimaryColor, req.LogoURL, req.BannerURL, req.WhatsApp, req.ServiceHours,
 	).Scan(
 		&s.ID, &s.Name, &s.Slug, &s.Description, &s.WhatsApp, &s.ServiceHours, &s.LogoURL, &s.BannerURL, &s.PrimaryColor, &s.Domain, &s.Subdomain,
 	); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" && strings.Contains(strings.ToLower(pgErr.ConstraintName), "slug") {
+			JSONError(c, 409, fmt.Errorf("ja existe loja com este slug"))
+			return
+		}
 		JSONError(c, 500, err)
 		return
 	}

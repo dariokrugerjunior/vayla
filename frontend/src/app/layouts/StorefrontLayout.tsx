@@ -13,25 +13,25 @@ import { StoreNotFound } from '../components/StoreNotFound';
 
 export function StorefrontLayout() {
   const { items } = useCart();
-  const { store, storeID, storeNotFound, isLoading } = useStore();
+  const { store, storeID, storeSlug, storeNotFound, isLoading } = useStore();
   const location = useLocation();
   const [categories, setCategories] = useState<Category[]>([]);
   const [whatsAppNumber, setWhatsAppNumber] = useState('');
-  const baseStorePath = `/stores/id/${storeID}`;
+  const baseStorePath = `/${storeSlug}`;
 
   useEffect(() => {
-    if (!storeID) return;
-    fetchCategories(storeID)
+    if (!storeSlug) return;
+    fetchCategories(storeSlug)
       .then(setCategories)
       .catch(() => setCategories([]));
-  }, [storeID]);
+  }, [storeSlug]);
 
   useEffect(() => {
-    if (!storeID) return;
-    fetchStoreWhatsAppSettings(storeID)
+    if (!storeSlug) return;
+    fetchStoreWhatsAppSettings(storeSlug)
       .then((data) => setWhatsAppNumber(data.isActive ? data.whatsappNumber : ''))
       .catch(() => setWhatsAppNumber(''));
-  }, [storeID]);
+  }, [storeSlug]);
 
   useEffect(() => {
     if (!storeID) return;
@@ -62,7 +62,7 @@ export function StorefrontLayout() {
   const cartCount = items.reduce((total, item) => total + item.quantity, 0);
 
   if (storeNotFound) {
-    return <StoreNotFound storeID={storeID} />;
+    return <StoreNotFound />;
   }
 
   if (isLoading || !store) {

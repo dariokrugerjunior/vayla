@@ -40,7 +40,7 @@ export function AdminLogin() {
   };
 
   if (storeNotFound) {
-    return <StoreNotFound storeID={parsedStoreID} />;
+    return <StoreNotFound />;
   }
 
   return (

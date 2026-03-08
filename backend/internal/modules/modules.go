@@ -7,10 +7,13 @@ import (
 )
 
 func RegisterPublicRoutes(router *gin.Engine, h *handlers.HandlerContainer) {
+	router.GET("/stores/resolve-domain", h.ResolveStoreByDomain)
 	router.GET("/stores/:slug", h.GetStore)
 	router.GET("/stores/:slug/categories", h.ListCategories)
 	router.GET("/stores/:slug/products", h.ListProducts)
 	router.GET("/stores/:slug/products/:productSlug", h.GetProduct)
+	router.GET("/stores/:slug/banner-settings", h.GetStoreBannerSettings)
+	router.GET("/stores/:slug/whatsapp-settings", h.GetStoreWhatsAppSettings)
 	router.GET("/stores/id/:storeID", h.GetStoreByID)
 	router.GET("/stores/id/:storeID/categories", h.ListCategoriesByID)
 	router.GET("/stores/id/:storeID/products", h.ListProductsByID)
@@ -81,4 +84,3 @@ func RegisterAdminRoutes(router *gin.Engine, h *handlers.HandlerContainer) {
 	protected.PUT("/banner-settings", h.AdminUpdateBannerSettings)
 	protected.POST("/upload/image", h.AdminUploadImage)
 }
-

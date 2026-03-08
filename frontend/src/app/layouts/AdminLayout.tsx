@@ -37,7 +37,7 @@ export function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (storeNotFound) {
-    return <StoreNotFound storeID={storeID} />;
+    return <StoreNotFound />;
   }
 
   if (!store) {
@@ -45,7 +45,7 @@ export function AdminLayout() {
   }
 
   const baseAdminPath = `/stores/id/${storeID}/admin`;
-  const baseStorePath = `/stores/id/${storeID}`;
+  const baseStorePath = `/${store.slug}`;
 
   const isActive = (href: string) => {
     if (href === baseAdminPath) {
