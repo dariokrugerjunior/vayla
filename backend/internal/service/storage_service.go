@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -19,6 +20,7 @@ import (
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/smithy-go"
 	"github.com/google/uuid"
 )
 
@@ -103,6 +105,8 @@ func NewOracleObjectStorageService(ctx context.Context, cfg config.StorageConfig
 	awsCfg, err := awsconfig.LoadDefaultConfig(
 		ctx,
 		awsconfig.WithRegion(strings.TrimSpace(cfg.OracleRegion)),
+		awsconfig.WithRequestChecksumCalculation(aws.RequestChecksumCalculationWhenRequired),
+		awsconfig.WithResponseChecksumValidation(aws.ResponseChecksumValidationWhenRequired),
 		awsconfig.WithCredentialsProvider(
 			credentials.NewStaticCredentialsProvider(
 				strings.TrimSpace(cfg.OracleAccessKeyID),
@@ -188,11 +192,16 @@ func (s *OracleObjectStorageService) UploadImage(ctx context.Context, input Uplo
 	}
 
 	if _, err := s.client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket:      aws.String(s.bucket),
-		Key:         aws.String(key),
-		Body:        bytes.NewReader(raw),
-		ContentType: aws.String(contentType),
+		Bucket:        aws.String(s.bucket),
+		Key:           aws.String(key),
+		Body:          bytes.NewReader(raw),
+		ContentType:   aws.String(contentType),
+		ContentLength: aws.Int64(int64(len(raw))),
 	}); err != nil {
+		var apiErr smithy.APIError
+		if errors.As(err, &apiErr) && apiErr.ErrorCode() == "SignatureDoesNotMatch" {
+			return nil, fmt.Errorf("falha no upload: assinatura invalida no Oracle S3 (verifique ORACLE_ACCESS_KEY_ID, ORACLE_SECRET_ACCESS_KEY, ORACLE_REGION e ORACLE_S3_ENDPOINT): %w", err)
+		}
 		return nil, fmt.Errorf("falha no upload: %w", err)
 	}
 

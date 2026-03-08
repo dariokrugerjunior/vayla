@@ -16,6 +16,8 @@ if (-not (Test-Path ".env")) {
 Get-Content .env | ForEach-Object {
     if ($_ -match "^\s*#" -or $_ -match "^\s*$") { return }
     $name, $value = $_ -split "=", 2
+    $name = $name.Trim()
+    $value = if ($null -ne $value) { $value.Trim() } else { "" }
     [Environment]::SetEnvironmentVariable($name, $value, "Process")
 }
 
