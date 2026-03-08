@@ -1518,6 +1518,12 @@ func (h *HandlerContainer) AdminUpdateStore(c *gin.Context) {
 		return
 	}
 
+	var oldLogoURL, oldBannerURL string
+	_ = h.DB.QueryRowContext(c.Request.Context(),
+		`SELECT COALESCE(logo_url, ''), COALESCE(banner_url, '') FROM stores WHERE id = $1`,
+		storeID,
+	).Scan(&oldLogoURL, &oldBannerURL)
+
 	const query = `
 		UPDATE stores
 		SET name = $2,
@@ -1551,7 +1557,29 @@ func (h *HandlerContainer) AdminUpdateStore(c *gin.Context) {
 		return
 	}
 
+	h.deleteObsoleteStoreImage(c, oldLogoURL, req.LogoURL)
+	h.deleteObsoleteStoreImage(c, oldBannerURL, req.BannerURL)
+
 	JSONOK(c, s)
+}
+
+func (h *HandlerContainer) deleteObsoleteStoreImage(c *gin.Context, oldURL, newURL string) {
+	if h.StorageSvc == nil {
+		return
+	}
+	oldClean := strings.TrimSpace(oldURL)
+	newClean := strings.TrimSpace(newURL)
+	if oldClean == "" || oldClean == newClean {
+		return
+	}
+	key, ok := extractObjectKeyFromOracleURL(oldClean)
+	if !ok {
+		return
+	}
+	if err := h.StorageSvc.DeleteImage(c.Request.Context(), key); err != nil {
+		// Best-effort cleanup: DB update already concluido.
+		fmt.Printf("failed to delete obsolete store image key=%s err=%v\n", key, err)
+	}
 }
 
 func (h *HandlerContainer) AdminGetWhatsAppSettings(c *gin.Context) {

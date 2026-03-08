@@ -1,4 +1,4 @@
-﻿import { apiDelete, apiGet, apiPost, apiPut, STORE_ID, getAdminToken } from './api';
+import { apiDelete, apiGet, apiPost, apiPostForm, apiPut, STORE_ID, getAdminToken } from './api';
 import { Category, Customer, Order, Product, ProductVariation, Store, StoreBannerSettings } from '../types';
 
 export function getStoreID() {
@@ -191,6 +191,7 @@ export async function createAdminProduct(payload: {
   is_featured: boolean;
   is_active: boolean;
   variants: { sku?: string; color: string; size: string; stock: number }[];
+  images?: string[];
 }): Promise<{ id: number }> {
   return apiPost(`/stores/id/${payload.store_id}/admin/products`, payload, { token: getAdminToken(payload.store_id) });
 }
@@ -205,8 +206,27 @@ export async function updateAdminProduct(storeId: number, id: number, payload: {
   is_featured: boolean;
   is_active: boolean;
   variants: { sku?: string; color: string; size: string; stock: number }[];
+  images?: string[];
 }): Promise<{ id: number }> {
   return apiPut(`/stores/id/${storeId}/admin/products/${id}`, payload, { token: getAdminToken(storeId) });
+}
+
+export async function uploadAdminImage(
+  storeId: number,
+  context: 'logo' | 'banner' | 'products' | 'categories' | 'gallery',
+  file: File
+): Promise<{
+  key: string;
+  url: string;
+  originalName: string;
+  fileName: string;
+  contentType: string;
+  size: number;
+}> {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('context', context);
+  return apiPostForm(`/stores/id/${storeId}/admin/upload/image`, form, { token: getAdminToken(storeId) });
 }
 
 export async function fetchAdminCategories(storeId: number): Promise<Category[]> {

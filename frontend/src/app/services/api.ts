@@ -31,14 +31,14 @@ async function request<T>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', path: strin
     ...authHeaders(options?.token),
   };
 
-  if (method !== 'GET') {
+  if (method !== 'GET' && !(body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
   }
 
   const res = await fetch(`${API_URL}${path}`, {
     method,
     headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
   });
 
   const data = (await res.json()) as APIEnvelope<T>;
@@ -63,6 +63,10 @@ export async function apiPut<T>(path: string, body: unknown, options?: RequestOp
 
 export async function apiDelete<T>(path: string, options?: RequestOptions): Promise<T> {
   return request<T>('DELETE', path, undefined, options);
+}
+
+export async function apiPostForm<T>(path: string, formData: FormData, options?: RequestOptions): Promise<T> {
+  return request<T>('POST', path, formData, options);
 }
 
 const ADMIN_TOKEN_KEY = 'vayla_admin_token_';

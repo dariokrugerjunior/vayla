@@ -5,7 +5,7 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { useStore } from '../../contexts/StoreContext';
-import { fetchAdminBannerSettings, updateAdminBannerSettings } from '../../services/storefront';
+import { fetchAdminBannerSettings, updateAdminBannerSettings, uploadAdminImage } from '../../services/storefront';
 import { toast } from 'sonner';
 
 export function StoreSettings() {
@@ -14,6 +14,10 @@ export function StoreSettings() {
   const [domain, setDomain] = useState('');
   const [primaryColor, setPrimaryColor] = useState('#111111');
   const [serviceHours, setServiceHours] = useState('Seg-Sex: 9h às 18h | Sáb: 9h às 13h');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [bannerUrl, setBannerUrl] = useState('');
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
 
   const [bannerTitle, setBannerTitle] = useState('Coleção Outono/Inverno 2026');
   const [bannerSubtitle, setBannerSubtitle] = useState('Descubra as últimas tendências em moda com até 30% de desconto');
@@ -30,6 +34,8 @@ export function StoreSettings() {
     setDomain(store.domain || store.subdomain || '');
     setPrimaryColor(store.primaryColor);
     setServiceHours(store.serviceHours || 'Seg-Sex: 9h às 18h | Sáb: 9h às 13h');
+    setLogoUrl(store.logoUrl || '');
+    setBannerUrl(store.bannerUrl || '');
   }, [store]);
 
   useEffect(() => {
@@ -55,7 +61,7 @@ export function StoreSettings() {
   }
 
   const handleSave = async () => {
-    await updateStore({ name, domain, primaryColor, serviceHours });
+    await updateStore({ name, domain, primaryColor, serviceHours, logoUrl, bannerUrl });
     await updateAdminBannerSettings(storeID, {
       title: bannerTitle,
       subtitle: bannerSubtitle,
@@ -68,6 +74,34 @@ export function StoreSettings() {
       is_active: true,
     });
     toast.success('Configurações salvas com sucesso!');
+  };
+
+  const handleLogoUpload = async (file?: File) => {
+    if (!file || !storeID) return;
+    setIsUploadingLogo(true);
+    try {
+      const uploaded = await uploadAdminImage(storeID, 'logo', file);
+      setLogoUrl(uploaded.url);
+      toast.success('Logo enviada com sucesso!');
+    } catch (err) {
+      toast.error((err as Error).message || 'Falha no upload da logo');
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
+  const handleBannerUpload = async (file?: File) => {
+    if (!file || !storeID) return;
+    setIsUploadingBanner(true);
+    try {
+      const uploaded = await uploadAdminImage(storeID, 'banner', file);
+      setBannerUrl(uploaded.url);
+      toast.success('Banner enviado com sucesso!');
+    } catch (err) {
+      toast.error((err as Error).message || 'Falha no upload do banner');
+    } finally {
+      setIsUploadingBanner(false);
+    }
   };
 
   return (
@@ -134,14 +168,25 @@ export function StoreSettings() {
             <Label>Logo da Loja</Label>
             <div className="flex items-center gap-6 mt-3">
               <img
-                src={store.logoUrl || 'https://placehold.co/200x200?text=Logo'}
+                src={logoUrl || 'https://placehold.co/200x200?text=Logo'}
                 alt="Logo"
                 className="w-24 h-24 rounded-full object-cover border-2 border-neutral-200"
               />
               <div className="flex-1">
-                <Button variant="outline">
+                <input
+                  id="store-logo-upload"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="hidden"
+                  onChange={(e) => handleLogoUpload(e.target.files?.[0])}
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => document.getElementById('store-logo-upload')?.click()}
+                  disabled={isUploadingLogo}
+                >
                   <Upload className="h-4 w-4 mr-2" />
-                  Fazer Upload
+                  {isUploadingLogo ? 'Enviando...' : 'Fazer Upload'}
                 </Button>
                 <p className="text-sm text-neutral-500 mt-2">
                   Recomendado: 200x200px, formato PNG ou JPG
@@ -154,14 +199,25 @@ export function StoreSettings() {
             <Label>Banner Principal</Label>
             <div className="mt-3">
               <img
-                src={store.bannerUrl || 'https://placehold.co/1200x400?text=Banner'}
+                src={bannerUrl || 'https://placehold.co/1200x400?text=Banner'}
                 alt="Banner"
                 className="w-full h-40 rounded-xl object-cover border-2 border-neutral-200"
               />
               <div className="mt-3">
-                <Button variant="outline">
+                <input
+                  id="store-banner-upload"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="hidden"
+                  onChange={(e) => handleBannerUpload(e.target.files?.[0])}
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => document.getElementById('store-banner-upload')?.click()}
+                  disabled={isUploadingBanner}
+                >
                   <Upload className="h-4 w-4 mr-2" />
-                  Fazer Upload
+                  {isUploadingBanner ? 'Enviando...' : 'Fazer Upload'}
                 </Button>
                 <p className="text-sm text-neutral-500 mt-2">
                   Recomendado: 1200x400px, formato PNG ou JPG

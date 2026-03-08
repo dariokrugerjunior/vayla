@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"fmt"
+	"log"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -35,6 +37,7 @@ type AdminCreateProductRequest struct {
 	IsFeatured       bool                       `json:"is_featured"`
 	IsActive         *bool                      `json:"is_active"`
 	Variants         []AdminProductVariantInput `json:"variants"`
+	Images           *[]string                  `json:"images"`
 }
 
 func (h *HandlerContainer) AdminCreateProduct(c *gin.Context) {
@@ -107,6 +110,17 @@ func (h *HandlerContainer) AdminCreateProduct(c *gin.Context) {
 	if err := h.insertVariants(c, id, req.Variants); err != nil {
 		JSONError(c, 500, err)
 		return
+	}
+	if req.Images != nil {
+		images, err := normalizeImageURLs(*req.Images)
+		if err != nil {
+			JSONError(c, 400, err)
+			return
+		}
+		if err := h.replaceProductImages(c, id, images); err != nil {
+			JSONError(c, 500, err)
+			return
+		}
 	}
 
 	JSONCreated(c, gin.H{"id": id})
@@ -182,6 +196,23 @@ func (h *HandlerContainer) AdminUpdateProduct(c *gin.Context) {
 		JSONError(c, 500, err)
 		return
 	}
+	if req.Images != nil {
+		images, err := normalizeImageURLs(*req.Images)
+		if err != nil {
+			JSONError(c, 400, err)
+			return
+		}
+		oldImages, err := h.listProductImages(c, productID)
+		if err != nil {
+			JSONError(c, 500, err)
+			return
+		}
+		if err := h.replaceProductImages(c, productID, images); err != nil {
+			JSONError(c, 500, err)
+			return
+		}
+		h.deleteObsoleteProductImages(c, oldImages, images)
+	}
 
 	JSONOK(c, gin.H{"id": productID})
 }
@@ -221,4 +252,101 @@ func (h *HandlerContainer) replaceVariants(c *gin.Context, productID int64, vari
 		return err
 	}
 	return h.insertVariants(c, productID, variants)
+}
+
+func (h *HandlerContainer) listProductImages(c *gin.Context, productID int64) ([]string, error) {
+	rows, err := h.DB.QueryContext(c.Request.Context(), `SELECT image_url FROM product_images WHERE product_id = $1`, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	images := make([]string, 0, 4)
+	for rows.Next() {
+		var imageURL string
+		if err := rows.Scan(&imageURL); err != nil {
+			return nil, err
+		}
+		images = append(images, imageURL)
+	}
+	return images, nil
+}
+
+func (h *HandlerContainer) replaceProductImages(c *gin.Context, productID int64, images []string) error {
+	if _, err := h.DB.ExecContext(c.Request.Context(), `DELETE FROM product_images WHERE product_id = $1`, productID); err != nil {
+		return err
+	}
+	if len(images) == 0 {
+		return nil
+	}
+
+	const query = `
+		INSERT INTO product_images (product_id, image_url, sort_order, is_cover)
+		VALUES ($1, $2, $3, $4)
+	`
+	for idx, imageURL := range images {
+		if _, err := h.DB.ExecContext(c.Request.Context(), query, productID, imageURL, idx+1, idx == 0); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func normalizeImageURLs(images []string) ([]string, error) {
+	normalized := make([]string, 0, len(images))
+	for _, raw := range images {
+		u := strings.TrimSpace(raw)
+		if u == "" {
+			continue
+		}
+		parsed, err := url.Parse(u)
+		if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+			return nil, fmt.Errorf("invalid field: images")
+		}
+		if parsed.Scheme != "http" && parsed.Scheme != "https" {
+			return nil, fmt.Errorf("invalid field: images")
+		}
+		normalized = append(normalized, u)
+	}
+	return normalized, nil
+}
+
+func (h *HandlerContainer) deleteObsoleteProductImages(c *gin.Context, oldImages []string, newImages []string) {
+	if h.StorageSvc == nil {
+		return
+	}
+	keep := make(map[string]bool, len(newImages))
+	for _, imageURL := range newImages {
+		keep[imageURL] = true
+	}
+
+	for _, imageURL := range oldImages {
+		if imageURL == "" || keep[imageURL] {
+			continue
+		}
+		key, ok := extractObjectKeyFromOracleURL(imageURL)
+		if !ok {
+			continue
+		}
+		if err := h.StorageSvc.DeleteImage(c.Request.Context(), key); err != nil {
+			log.Printf("failed to delete obsolete image key=%s err=%v", key, err)
+		}
+	}
+}
+
+func extractObjectKeyFromOracleURL(rawURL string) (string, bool) {
+	parsed, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil {
+		return "", false
+	}
+	idx := strings.Index(parsed.Path, "/o/")
+	if idx < 0 {
+		return "", false
+	}
+	keyEscaped := strings.TrimPrefix(parsed.Path[idx:], "/o/")
+	key, err := url.PathUnescape(keyEscaped)
+	if err != nil || key == "" {
+		return "", false
+	}
+	return key, true
 }

@@ -17,7 +17,7 @@ import { Switch } from '../../components/ui/switch';
 import { toast } from 'sonner';
 import { useStore } from '../../contexts/StoreContext';
 import { Category, ProductVariation } from '../../types';
-import { createAdminProduct, fetchAdminCategories, fetchAdminProduct, fetchProduct, updateAdminProduct } from '../../services/storefront';
+import { createAdminProduct, fetchAdminCategories, fetchAdminProduct, fetchProduct, updateAdminProduct, uploadAdminImage } from '../../services/storefront';
 
 export function ProductEditor() {
   const { id } = useParams();
@@ -33,6 +33,8 @@ export function ProductEditor() {
   const [discountPrice, setDiscountPrice] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [status, setStatus] = useState(true);
+  const [images, setImages] = useState<string[]>([]);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [variations, setVariations] = useState<ProductVariation[]>([
     { id: 1, color: '', size: '', stock: 0 },
   ]);
@@ -57,6 +59,7 @@ export function ProductEditor() {
         setStatus(p.status === 'active');
 
         const fullProduct = await fetchProduct(store.id, p.slug);
+        setImages(fullProduct.images || []);
         setVariations(fullProduct.variations.length ? fullProduct.variations : [{ id: 1, color: '', size: '', stock: 0 }]);
       })
       .catch(() => toast.error('Não foi possível carregar o produto'));
@@ -105,6 +108,7 @@ export function ProductEditor() {
         size: v.size,
         stock: v.stock,
       })),
+      images,
     };
 
     try {
@@ -119,6 +123,29 @@ export function ProductEditor() {
     } catch (err) {
       toast.error((err as Error).message);
     }
+  };
+
+  const handleUploadImages = async (files: FileList | null) => {
+    if (!files || !store) return;
+    const selected = Array.from(files);
+    if (!selected.length) return;
+
+    setIsUploadingImage(true);
+    try {
+      const uploaded = await Promise.all(
+        selected.map((file) => uploadAdminImage(store.id, 'products', file))
+      );
+      setImages((prev) => [...prev, ...uploaded.map((item) => item.url)]);
+      toast.success('Imagens enviadas com sucesso!');
+    } catch (err) {
+      toast.error((err as Error).message || 'Falha no upload das imagens');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -234,10 +261,45 @@ export function ProductEditor() {
                 Arraste imagens ou clique para fazer upload
               </p>
               <p className="text-xs text-neutral-500">PNG, JPG até 5MB</p>
-              <Button variant="outline" className="mt-4">
+              <input
+                id="product-images-upload"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                multiple
+                className="hidden"
+                onChange={(e) => handleUploadImages(e.target.files)}
+              />
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => document.getElementById('product-images-upload')?.click()}
+                disabled={isUploadingImage}
+              >
                 Selecionar Imagens
               </Button>
             </div>
+            {images.length > 0 && (
+              <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                {images.map((image, index) => (
+                  <div key={`${image}-${index}`} className="relative">
+                    <img
+                      src={image}
+                      alt={`Imagem ${index + 1}`}
+                      className="w-full h-24 object-cover rounded-lg border border-neutral-200"
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="absolute top-1 right-1 h-7 px-2"
+                      onClick={() => handleRemoveImage(index)}
+                    >
+                      Remover
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 

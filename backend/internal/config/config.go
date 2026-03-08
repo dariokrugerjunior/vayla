@@ -12,6 +12,7 @@ type Config struct {
 	Redis RedisConfig
 	JWT   JWTConfig
 	Base  BaseConfig
+	Storage StorageConfig
 }
 
 type AppConfig struct {
@@ -43,6 +44,17 @@ type BaseConfig struct {
 	BaseURL string
 }
 
+type StorageConfig struct {
+	OracleRegion          string
+	OracleNamespace       string
+	OracleBucketName      string
+	OracleAccessKeyID     string
+	OracleSecretAccessKey string
+	OracleS3Endpoint      string
+	OraclePublicBaseURL   string
+	MaxFileSize           int64
+}
+
 func Load() (Config, error) {
 	cfg := Config{}
 	cfg.App.Env = getEnv("APP_ENV", "local")
@@ -62,6 +74,14 @@ func Load() (Config, error) {
 
 	cfg.JWT.Secret = getEnv("JWT_SECRET", "change-me")
 	cfg.Base.BaseURL = getEnv("BASE_URL", "http://localhost:8080")
+	cfg.Storage.OracleRegion = getEnv("ORACLE_REGION", "")
+	cfg.Storage.OracleNamespace = getEnv("ORACLE_NAMESPACE", "")
+	cfg.Storage.OracleBucketName = getEnv("ORACLE_BUCKET_NAME", "stores-imagens")
+	cfg.Storage.OracleAccessKeyID = getEnv("ORACLE_ACCESS_KEY_ID", "")
+	cfg.Storage.OracleSecretAccessKey = getEnv("ORACLE_SECRET_ACCESS_KEY", "")
+	cfg.Storage.OracleS3Endpoint = getEnv("ORACLE_S3_ENDPOINT", "")
+	cfg.Storage.OraclePublicBaseURL = getEnv("ORACLE_PUBLIC_BASE_URL", "")
+	cfg.Storage.MaxFileSize = getEnvInt64("MAX_FILE_SIZE", 5*1024*1024)
 
 	if cfg.App.Port <= 0 {
 		return cfg, fmt.Errorf("invalid APP_PORT")
@@ -83,6 +103,18 @@ func getEnvInt(key string, def int) int {
 		return def
 	}
 	parsed, err := strconv.Atoi(val)
+	if err != nil {
+		return def
+	}
+	return parsed
+}
+
+func getEnvInt64(key string, def int64) int64 {
+	val := os.Getenv(key)
+	if val == "" {
+		return def
+	}
+	parsed, err := strconv.ParseInt(val, 10, 64)
 	if err != nil {
 		return def
 	}

@@ -47,6 +47,7 @@ func RegisterAdminRoutes(router *gin.Engine, h *handlers.HandlerContainer) {
 	admin.PUT("/whatsapp-settings", h.AdminUpdateWhatsAppSettings)
 	admin.GET("/banner-settings", h.AdminGetBannerSettings)
 	admin.PUT("/banner-settings", h.AdminUpdateBannerSettings)
+	admin.POST("/upload/image", h.AdminUploadImage)
 
 	storeAdmin := router.Group("/stores/id/:storeID/admin")
 	storeAdmin.POST("/login", h.AdminLoginByStoreID)
@@ -77,5 +78,6 @@ func RegisterAdminRoutes(router *gin.Engine, h *handlers.HandlerContainer) {
 	protected.PUT("/whatsapp-settings", h.AdminUpdateWhatsAppSettings)
 	protected.GET("/banner-settings", h.AdminGetBannerSettings)
 	protected.PUT("/banner-settings", h.AdminUpdateBannerSettings)
+	protected.POST("/upload/image", h.AdminUploadImage)
 }
 
