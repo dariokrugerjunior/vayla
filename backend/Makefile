@@ -20,6 +20,7 @@ psql:
 
 migrate:
 	$(COMPOSE) exec -T postgres psql -U $(DB_USER) -d $(DB_NAME) -f /migrations/001_init.sql
+	$(COMPOSE) exec -T postgres psql -U $(DB_USER) -d $(DB_NAME) -f /migrations/003_categories_unique_name.sql
 
 seed:
 	$(COMPOSE) exec -T postgres psql -U $(DB_USER) -d $(DB_NAME) -f /migrations/002_seed.sql

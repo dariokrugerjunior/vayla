@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgconn"
 	"multi-tennet/internal/util"
 	"strconv"
 	"strings"
@@ -416,6 +418,22 @@ func (h *HandlerContainer) AdminCreateCategory(c *gin.Context) {
 		isActive = *req.IsActive
 	}
 
+	const existsQuery = `
+		SELECT 1
+		FROM categories
+		WHERE store_id = $1
+			AND lower(btrim(name)) = lower(btrim($2))
+		LIMIT 1
+	`
+	var duplicate int
+	if err := h.DB.QueryRowContext(c.Request.Context(), existsQuery, storeID, name).Scan(&duplicate); err == nil {
+		JSONError(c, 409, fmt.Errorf("ja existe categoria com este nome"))
+		return
+	} else if err != sql.ErrNoRows {
+		JSONError(c, 500, err)
+		return
+	}
+
 	const query = `
 		INSERT INTO categories (store_id, name, slug, description, is_active, sort_order)
 		VALUES ($1, $2, $3, $4, $5, $6)
@@ -428,6 +446,17 @@ func (h *HandlerContainer) AdminCreateCategory(c *gin.Context) {
 	).Scan(
 		&category.ID, &category.StoreID, &category.Name, &category.Slug, &category.Description, &category.IsActive, &category.SortOrder, &category.CreatedAt, &category.UpdatedAt,
 	); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			if pgErr.ConstraintName == "idx_categories_store_name_unique" {
+				JSONError(c, 409, fmt.Errorf("ja existe categoria com este nome"))
+				return
+			}
+			if strings.Contains(pgErr.ConstraintName, "slug") {
+				JSONError(c, 409, fmt.Errorf("ja existe categoria com este slug"))
+				return
+			}
+		}
 		JSONError(c, 500, err)
 		return
 	}
@@ -479,6 +508,23 @@ func (h *HandlerContainer) AdminUpdateCategory(c *gin.Context) {
 		isActive = *req.IsActive
 	}
 
+	const existsQuery = `
+		SELECT 1
+		FROM categories
+		WHERE store_id = $1
+			AND id <> $2
+			AND lower(btrim(name)) = lower(btrim($3))
+		LIMIT 1
+	`
+	var duplicate int
+	if err := h.DB.QueryRowContext(c.Request.Context(), existsQuery, storeID, categoryID, name).Scan(&duplicate); err == nil {
+		JSONError(c, 409, fmt.Errorf("ja existe categoria com este nome"))
+		return
+	} else if err != sql.ErrNoRows {
+		JSONError(c, 500, err)
+		return
+	}
+
 	const query = `
 		UPDATE categories
 		SET name = $3,
@@ -500,6 +546,17 @@ func (h *HandlerContainer) AdminUpdateCategory(c *gin.Context) {
 		if err == sql.ErrNoRows {
 			JSONError(c, 404, fmt.Errorf("category not found"))
 			return
+		}
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			if pgErr.ConstraintName == "idx_categories_store_name_unique" {
+				JSONError(c, 409, fmt.Errorf("ja existe categoria com este nome"))
+				return
+			}
+			if strings.Contains(pgErr.ConstraintName, "slug") {
+				JSONError(c, 409, fmt.Errorf("ja existe categoria com este slug"))
+				return
+			}
 		}
 		JSONError(c, 500, err)
 		return

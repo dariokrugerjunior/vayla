@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS categories (
 
 CREATE INDEX IF NOT EXISTS idx_categories_store_id ON categories(store_id);
 CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(slug);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_store_name_unique ON categories(store_id, lower(btrim(name)));
 CREATE INDEX IF NOT EXISTS idx_categories_created_at ON categories(created_at);
 
 CREATE TABLE IF NOT EXISTS products (
