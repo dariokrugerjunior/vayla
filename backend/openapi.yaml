@@ -1,0 +1,170 @@
+openapi: 3.0.3
+info:
+  title: Vayla API
+  version: "1.0.0"
+  description: API do backend Vayla (multi-tenant).
+servers:
+  - url: http://localhost:8080
+    description: Local
+tags:
+  - name: Health
+  - name: Storefront
+  - name: Checkout
+  - name: Admin
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        "200":
+          description: OK
+  /stores/{slug}:
+    get:
+      tags: [Storefront]
+      summary: Buscar loja por slug
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Loja encontrada
+        "404":
+          description: Loja não encontrada
+  /stores/{slug}/categories:
+    get:
+      tags: [Storefront]
+      summary: Listar categorias da loja
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lista de categorias
+  /stores/{slug}/products:
+    get:
+      tags: [Storefront]
+      summary: Listar produtos da loja
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lista de produtos
+  /stores/{slug}/products/{productSlug}:
+    get:
+      tags: [Storefront]
+      summary: Buscar produto por slug
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: productSlug
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Produto encontrado
+        "404":
+          description: Produto não encontrado
+  /stores/{slug}/banner-settings:
+    get:
+      tags: [Storefront]
+      summary: Configuração do banner da loja
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Configuração do banner
+  /stores/{slug}/whatsapp-settings:
+    get:
+      tags: [Storefront]
+      summary: Configuração pública de WhatsApp
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Configuração de WhatsApp
+  /checkout/whatsapp:
+    post:
+      tags: [Checkout]
+      summary: Criar pedido e gerar URL de WhatsApp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [store_id, customer_name, customer_phone, items]
+              properties:
+                store_id:
+                  type: integer
+                customer_name:
+                  type: string
+                customer_phone:
+                  type: string
+                items:
+                  type: array
+                  items:
+                    type: object
+                    required: [product_id, quantity]
+                    properties:
+                      product_id:
+                        type: integer
+                      variant_id:
+                        type: integer
+                      quantity:
+                        type: integer
+      responses:
+        "200":
+          description: Pedido criado
+        "400":
+          description: Payload inválido
+  /stores/id/{storeID}/admin/login:
+    post:
+      tags: [Admin]
+      summary: Login do admin da loja
+      parameters:
+        - in: path
+          name: storeID
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Token JWT
+        "401":
+          description: Credenciais inválidas
