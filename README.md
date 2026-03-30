@@ -5,30 +5,31 @@
 ![Backend](https://img.shields.io/badge/backend-Go%201.23%20%2B%20Gin-00add8)
 ![Database](https://img.shields.io/badge/database-PostgreSQL%2016-336791)
 ![Cache](https://img.shields.io/badge/cache-Redis%207-dc382d)
-Plataforma de e-commerce multi-tenant para lojas de moda, com vitrine pÃºblica, painel administrativo e fechamento de pedidos via WhatsApp.
 
-## VisÃ£o geral
+Plataforma de e-commerce multi-tenant para lojas de moda, com vitrine pública, painel administrativo e fechamento de pedidos via WhatsApp.
 
-O projeto estÃ¡ dividido em dois mÃ³dulos principais:
+## Visão geral
 
-- `frontend/`: aplicaÃ§Ã£o React + Vite com catÃ¡logo da loja e painel admin.
-- `backend/`: API em Go com autenticaÃ§Ã£o, catÃ¡logo, pedidos, estoque, clientes e integraÃ§Ãµes de storage.
+O projeto está dividido em dois módulos principais:
 
-O fluxo principal Ã©:
+- `frontend/`: aplicação React + Vite com catálogo da loja e painel admin.
+- `backend/`: API em Go com autenticação, catálogo, pedidos, estoque, clientes e integrações de storage.
+
+O fluxo principal é:
 
 1. A loja publica produtos e categorias no painel administrativo.
 2. O cliente navega pela vitrine, visualiza detalhes e adiciona itens ao carrinho.
 3. O checkout gera o pedido internamente e abre a conversa no WhatsApp com a mensagem pronta.
-4. O painel acompanha pedidos, clientes, estoque e mÃ©tricas da loja.
+4. O painel acompanha pedidos, clientes, estoque e métricas da loja.
 
 ## Principais funcionalidades
 
-- Multi-tenant por `store_id`, `slug`, subdomÃ­nio e resoluÃ§Ã£o por domÃ­nio.
-- CatÃ¡logo pÃºblico com categorias, listagem e pÃ¡gina de produto.
+- Multi-tenant por `store_id`, `slug`, subdomínio e resolução por domínio.
+- Catálogo público com categorias, listagem e página de produto.
 - Carrinho e checkout por WhatsApp.
 - Login administrativo por loja com JWT.
-- GestÃ£o de produtos, categorias, estoque, pedidos e clientes.
-- Dashboard e analytics para a operaÃ§Ã£o da loja.
+- Gestão de produtos, categorias, estoque, pedidos e clientes.
+- Dashboard e analytics para a operação da loja.
 - Upload de imagens para logo, banner, galeria e produtos.
 - Seed inicial com loja demo pronta para uso.
 
@@ -50,9 +51,9 @@ O fluxo principal Ã©:
 - PostgreSQL 16
 - Redis 7
 - Docker Compose
-- AWS SDK v2 compatÃ­vel com S3/Object Storage
+- AWS SDK v2 compatível com S3/Object Storage
 
-## Estrutura do repositÃ³rio
+## Estrutura do repositório
 
 ```text
 vayla/
@@ -74,14 +75,14 @@ vayla/
     `-- screenshots/
 ```
 
-## MÃ³dulos e telas
+## Módulos e telas
 
 ### Storefront
 
 - Home da loja
-- PÃ¡gina de produto
+- Página de produto
 - Carrinho
-- FinalizaÃ§Ã£o via WhatsApp
+- Finalização via WhatsApp
 
 ### Admin
 
@@ -93,12 +94,12 @@ vayla/
 - Clientes
 - Estoque
 - Analytics
-- ConfiguraÃ§Ãµes da loja
-- ConfiguraÃ§Ãµes de WhatsApp
+- Configurações da loja
+- Configurações de WhatsApp
 
 ## Como rodar o projeto
 
-### PrÃ©-requisitos
+### Pré-requisitos
 
 - Node.js 18+
 - npm
@@ -107,7 +108,7 @@ vayla/
 
 ### 1. Subir backend
 
-Entre em `backend/`, copie o arquivo de ambiente e suba os serviÃ§os:
+Entre em `backend/`, copie o arquivo de ambiente e suba os serviços:
 
 ```powershell
 cd backend
@@ -133,11 +134,11 @@ Copy-Item .env.example .env
 .\run-local.ps1
 ```
 
-ServiÃ§os expostos:
+Serviços expostos:
 
 - API: `http://localhost:8080`
 - Adminer: `http://localhost:8081`
-- PostgreSQL: porta `4567` no host por padrÃ£o
+- PostgreSQL: porta `4567` no host por padrão
 - Redis: porta `6379`
 
 ### 2. Subir frontend
@@ -155,17 +156,17 @@ npm install
 npm run dev
 ```
 
-Frontend disponÃ­vel em:
+Frontend disponível em:
 
 - `http://localhost:5173`
 
-## VariÃ¡veis de ambiente
+## Variáveis de ambiente
 
 ### Backend
 
 Arquivo base: `backend/.env.example`
 
-VariÃ¡veis principais:
+Variáveis principais:
 
 - `APP_PORT=8080`
 - `DB_HOST=localhost`
@@ -179,7 +180,7 @@ VariÃ¡veis principais:
 - `JWT_SECRET=change-me`
 - `BASE_URL=http://localhost:8080`
 
-VariÃ¡veis para upload em object storage:
+Variáveis para upload em object storage:
 
 - `ORACLE_REGION`
 - `ORACLE_NAMESPACE`
@@ -198,7 +199,7 @@ VariÃ¡veis para upload em object storage:
 
 ## Dados seed e acesso inicial
 
-O banco jÃ¡ possui uma loja demo e usuÃ¡rio admin no seed:
+O banco já possui uma loja demo e usuário admin no seed:
 
 - Loja: `Loja Modelo`
 - Slug: `loja-modelo`
@@ -206,15 +207,15 @@ O banco jÃ¡ possui uma loja demo e usuÃ¡rio admin no seed:
 - Admin e-mail: `admin@lojamodelo.local`
 - Admin senha: `admin123`
 
-URLs Ãºteis:
+URLs úteis:
 
-- Loja pÃºblica: `http://localhost:5173/loja-modelo`
+- Loja pública: `http://localhost:5173/loja-modelo`
 - Admin login: `http://localhost:5173/stores/id/1/admin/login`
 - Admin raiz: `http://localhost:5173/stores/id/1/admin`
 
 ## Endpoints principais
 
-### PÃºblicos
+### Públicos
 
 - `GET /health`
 - `GET /stores/{slug}`
@@ -235,14 +236,14 @@ URLs Ãºteis:
 - `GET /stores/id/{storeID}/admin/analytics`
 - CRUD de produtos em `/stores/id/{storeID}/admin/products`
 - CRUD de categorias em `/stores/id/{storeID}/admin/categories`
-- GestÃ£o de pedidos em `/stores/id/{storeID}/admin/orders`
-- GestÃ£o de clientes em `/stores/id/{storeID}/admin/customers`
-- GestÃ£o de estoque em `/stores/id/{storeID}/admin/inventory`
-- ConfiguraÃ§Ãµes da loja em `/stores/id/{storeID}/admin/store`
-- ConfiguraÃ§Ãµes de WhatsApp em `/stores/id/{storeID}/admin/whatsapp-settings`
+- Gestão de pedidos em `/stores/id/{storeID}/admin/orders`
+- Gestão de clientes em `/stores/id/{storeID}/admin/customers`
+- Gestão de estoque em `/stores/id/{storeID}/admin/inventory`
+- Configurações da loja em `/stores/id/{storeID}/admin/store`
+- Configurações de WhatsApp em `/stores/id/{storeID}/admin/whatsapp-settings`
 - Upload de imagem em `/stores/id/{storeID}/admin/upload/image`
 
-EspecificaÃ§Ã£o OpenAPI:
+Especificação OpenAPI:
 
 - `backend/openapi.yaml`
 
@@ -270,7 +271,7 @@ Resposta esperada:
   "success": true,
   "data": {
     "order_id": 1,
-    "whatsapp_message": "OlÃ¡! Quero fazer este pedido: ...",
+    "whatsapp_message": "Olá! Quero fazer este pedido: ...",
     "whatsapp_url": "https://wa.me/5511999999999?text=..."
   }
 }
@@ -286,7 +287,7 @@ Arquivos relevantes:
 - `backend/migrations/002_seed.sql`
 - `backend/migrations/003_categories_unique_name.sql`
 
-Comandos Ãºteis:
+Comandos úteis:
 
 ```powershell
 cd backend
@@ -298,7 +299,7 @@ make logs
 
 ## Galeria
 
-### Fluxo pÃºblico
+### Fluxo público
 
 | Tela | Imagem |
 |---|---|
@@ -322,8 +323,8 @@ make logs
 | Pedidos | ![Pedidos](docs/screenshots/PEDIDOS.png) |
 | Clientes | ![Clientes](docs/screenshots/CLIENTES.png) |
 | Estoque | ![Estoque](docs/screenshots/ESTOQUE.png) |
-| ConfiguraÃ§Ã£o | ![ConfiguraÃ§Ã£o](docs/screenshots/CONFIGURAÃ‡ÃƒO.png) |
-| ConfiguraÃ§Ã£o 2 | ![ConfiguraÃ§Ã£o 2](docs/screenshots/CONFIGURAÃ‡ÃƒO%20-%202.png) |
+| Configuração | ![Configuração](docs/screenshots/CONFIGURAÇÃO.png) |
+| Configuração 2 | ![Configuração 2](docs/screenshots/CONFIGURAÇÃO%20-%202.png) |
 | Analista / Analytics | ![Analista](docs/screenshots/ANALISTA.png) |
 
 ## Desenvolvimento
@@ -349,17 +350,16 @@ cd frontend
 npm run build
 ```
 
-## ObservaÃ§Ãµes importantes
+## Observações importantes
 
-- O projeto nÃ£o possui suÃ­te de testes configurada na raiz neste estado atual.
-- O frontend depende do backend ativo para autenticaÃ§Ã£o, catÃ¡logo e painel administrativo.
-- O seed foi preparado para `store_id=1`, entÃ£o esse valor deve ser mantido no ambiente local inicial.
+- O projeto não possui suíte de testes configurada na raiz neste estado atual.
+- O frontend depende do backend ativo para autenticação, catálogo e painel administrativo.
+- O seed foi preparado para `store_id=1`, então esse valor deve ser mantido no ambiente local inicial.
 - O backend usa Redis e PostgreSQL mesmo em ambiente local.
 
 ## Roadmap sugerido
 
 - Adicionar testes automatizados no backend e frontend.
 - Versionar contratos da API com exemplos mais completos no OpenAPI.
-- Adicionar pipeline de CI para build e validaÃ§Ã£o.
-- Formalizar estratÃ©gia de deploy para frontend, API e storage.
-
+- Adicionar pipeline de CI para build e validação.
+- Formalizar estratégia de deploy para frontend, API e storage.
