@@ -5,6 +5,9 @@
 ![Backend](https://img.shields.io/badge/backend-Go%201.23%20%2B%20Gin-00add8)
 ![Database](https://img.shields.io/badge/database-PostgreSQL%2016-336791)
 ![Cache](https://img.shields.io/badge/cache-Redis%207-dc382d)
+![Styling](https://img.shields.io/badge/styling-Tailwind%20CSS%204-38bdf8)
+![Storage](https://img.shields.io/badge/storage-AWS%20S3-569a31)
+![Container](https://img.shields.io/badge/container-Docker-2496ed)
 
 Plataforma de e-commerce multi-tenant para lojas de moda, com vitrine pública, painel administrativo e fechamento de pedidos via WhatsApp.
 
